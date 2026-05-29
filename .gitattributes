@@ -1,0 +1,5 @@
+# Ensure shell scripts always use LF so they run on Linux VMs
+*.sh text eol=lf
+
+# Normalize text files
+* text=auto

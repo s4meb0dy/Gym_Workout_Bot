@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: gym-telegram-bot
+    runtime: node
+    plan: free
+    buildCommand: npm install && npm run build && npm run db:setup
+    startCommand: npm start
+    healthCheckPath: /healthcheck
+    envVars:
+      - key: BOT_TOKEN
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.5-flash
+      - key: DATABASE_URL
+        value: file:./dev.db
+      - key: TZ_NAME
+        value: Europe/Brussels
+      - key: ENABLE_SCHEDULER
+        value: "true"
+      - key: KEEPALIVE_MINUTES
+        value: "10"
+      # APP_URL: встав свій публічний URL Render після створення сервісу,
+      # напр. https://gym-telegram-bot.onrender.com — тримає сервіс активним 24/7
+      - key: APP_URL
+        sync: false
+      - key: NODE_ENV
+        value: production

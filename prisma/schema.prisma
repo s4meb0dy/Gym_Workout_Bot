@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String           @id @default(cuid())
+  telegramId    BigInt           @unique
+  username      String?
+  firstName     String?
+  createdAt     DateTime         @default(now())
+  sessions      WorkoutSession[]
+  bodyWeights   BodyWeight[]
+  nutritionLogs NutritionLog[]
+  reminder      ReminderSetting?
+}
+
+model BodyWeight {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  weightKg   Float
+  recordedAt DateTime @default(now())
+
+  @@index([userId, recordedAt])
+}
+
+model NutritionLog {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date         String // YYYY-MM-DD (local day) for aggregation
+  proteinGrams Float
+  calories     Float    @default(0)
+  fatGrams     Float    @default(0)
+  carbsGrams   Float    @default(0)
+  label        String?
+  recordedAt   DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model ReminderSetting {
+  id               String  @id @default(cuid())
+  userId           String  @unique
+  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId           BigInt
+  workoutEnabled   Boolean @default(true)
+  proteinEnabled   Boolean @default(true)
+  workoutHour        Int     @default(10)
+  proteinHour        Int     @default(20)
+  proteinTarget      Int     @default(160)
+  calorieTarget      Int     @default(2000)
+  backupEnabled      Boolean @default(true)
+  digestEnabled      Boolean @default(true)
+  supplementsEnabled Boolean @default(true)
+  supplementsHour    Int     @default(21)
+}
+
+model WorkoutDay {
+  id         Int              @id @default(autoincrement())
+  dayNumber  Int              @unique
+  weekday    String
+  name       String
+  exercises  Exercise[]
+  sessions   WorkoutSession[]
+}
+
+model Exercise {
+  id                Int        @id @default(autoincrement())
+  workoutDayId      Int
+  workoutDay        WorkoutDay @relation(fields: [workoutDayId], references: [id], onDelete: Cascade)
+  name              String
+  block             String
+  orderIndex        Int
+  targetSets        Int
+  targetRepsMin     Int
+  targetRepsMax     Int
+  bodyPart          String // "upper" | "lower"
+  muscleGroup       String   @default("Інше")
+  exerciseType      String   @default("reps") // "reps" | "time" | "warmup"
+  progressionMode   String   @default("weight") // "weight" | "assist"
+  progressionStep   Float    @default(2)
+  restTimeInSeconds Int      @default(90)
+  baselineWeightMin Float?
+  baselineWeightMax Float?
+  baselineNote      String?
+  technique         String?
+  sets              Set[]
+
+  @@unique([workoutDayId, orderIndex])
+}
+
+model WorkoutSession {
+  id           String     @id @default(cuid())
+  userId       String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutDayId Int
+  workoutDay   WorkoutDay @relation(fields: [workoutDayId], references: [id])
+  startedAt    DateTime   @default(now())
+  completedAt  DateTime?
+  sets         Set[]
+
+  @@index([userId, workoutDayId, completedAt])
+}
+
+model Set {
+  id               String         @id @default(cuid())
+  workoutSessionId String
+  workoutSession   WorkoutSession @relation(fields: [workoutSessionId], references: [id], onDelete: Cascade)
+  exerciseId       Int
+  exercise         Exercise       @relation(fields: [exerciseId], references: [id])
+  setNumber        Int
+  weight           Float
+  reps             Int
+  rpe              Float?
+  note             String?
+  createdAt        DateTime       @default(now())
+
+  @@unique([workoutSessionId, exerciseId, setNumber])
+  @@index([exerciseId])
+}

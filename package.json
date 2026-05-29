@@ -1,0 +1,45 @@
+{
+  "name": "gym-telegram-bot",
+  "version": "1.0.0",
+  "description": "Telegram bot for strength training tracking with automatic weight progression",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:push": "prisma db push",
+    "db:seed": "tsx prisma/seed.ts",
+    "db:reseed": "tsx prisma/seed.ts --force",
+    "db:setup": "prisma migrate deploy && tsx prisma/seed.ts"
+  },
+  "keywords": [
+    "telegram",
+    "gym",
+    "workout",
+    "bot"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "@prisma/client": "^6.8.2",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "grammy": "^1.36.0",
+    "node-cron": "^4.2.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.2",
+    "@types/node": "^22.15.29",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^6.8.2",
+    "tsx": "^4.19.4",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  }
+}
