@@ -7,6 +7,7 @@ import { registerStatsHandlers } from "./handlers/stats";
 import { registerWorkoutHandlers } from "./handlers/workout";
 import { registerTrackingHandlers } from "./handlers/tracking";
 import { registerFoodHandlers } from "./handlers/food";
+import { registerWaterHandlers } from "./handlers/water";
 import { registerAnalyticsHandlers } from "./handlers/analytics";
 import { registerToolsHandlers } from "./handlers/tools";
 import { registerHistoryHandlers } from "./handlers/history";
@@ -23,7 +24,7 @@ export interface PendingFood {
 
 export interface SessionData {
   awaitingSetInput: boolean;
-  awaitingInput?: "weight" | "protein" | "food_macros" | null;
+  awaitingInput?: "weight" | "protein" | "food_macros" | "water" | null;
   editingSetId?: string | null;
   quickWeight?: number | null;
   editProgram?: { mode: "rename" | "add"; dayNumber: number; exerciseId?: number } | null;
@@ -79,6 +80,7 @@ export function createBot(): Bot<BotContext> {
   registerMenuHandlers(bot);
   registerTrackingHandlers(bot);
   registerFoodHandlers(bot);
+  registerWaterHandlers(bot);
   registerAnalyticsHandlers(bot);
   registerToolsHandlers(bot);
   registerHistoryHandlers(bot);
@@ -119,6 +121,7 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
     { command: "stats", description: "Статистика" },
     { command: "weight", description: "Записати вагу тіла" },
     { command: "protein", description: "Додати білок за сьогодні" },
+    { command: "water", description: "Трекінг води" },
     { command: "food", description: "КБЖВ за фото / підсумок дня" },
     { command: "volume", description: "Обсяг по м'язах за тиждень" },
     { command: "progress", description: "Графік прогресу вправи" },

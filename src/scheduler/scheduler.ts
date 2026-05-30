@@ -5,6 +5,7 @@ import { config } from "../config/env";
 import {
   getActiveReminderSettings,
   getProteinForDate,
+  getWaterForDate,
 } from "../services/tracking.service";
 import { getWorkoutDayByNumber } from "../services/workout.service";
 import { buildBackupFile, backupExists } from "../services/backup.service";
@@ -20,6 +21,11 @@ const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
 const BACKUP_HOUR = 3;
 const DIGEST_WEEKDAY = "Sun";
 const DIGEST_HOUR = 19;
+const WATER_REMINDER_HOURS = [12, 16, 20];
+
+function formatMlShort(ml: number): string {
+  return ml >= 1000 ? `${(ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1)} л` : `${ml} мл`;
+}
 
 function getLocalHour(): number {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -76,6 +82,24 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
               `Залишилось ще <b>${Math.round(left)} г</b> — встигни добрати!`
             : `🍗 Чудово! Ціль ${setting.proteinTarget} г білка вже досягнута (${Math.round(total)} г). 💪`;
         await bot.api.sendMessage(chatId, message, { parse_mode: "HTML" });
+      }
+
+      if (setting.waterEnabled && WATER_REMINDER_HOURS.includes(hour)) {
+        const drunk = await getWaterForDate(setting.userId);
+        const left = setting.waterTargetMl - drunk;
+        if (left > 0) {
+          await bot.api.sendMessage(
+            chatId,
+            `💧 Вода: <b>${formatMlShort(drunk)}/${formatMlShort(setting.waterTargetMl)}</b>. ` +
+              `Залишилось <b>${formatMlShort(left)}</b> — зроби кілька ковтків! Додати: /water`,
+            { parse_mode: "HTML" },
+          );
+        } else if (hour === WATER_REMINDER_HOURS[0]) {
+          await bot.api.sendMessage(
+            chatId,
+            `💧 Ціль по воді вже виконана (${formatMlShort(drunk)}). Чудово! 👏`,
+          );
+        }
       }
 
       if (setting.backupEnabled && hour === BACKUP_HOUR && backupExists()) {

@@ -6,10 +6,34 @@ import { analyzeFoodPhoto, isFoodVisionEnabled } from "../../services/food-visio
 import { findOrCreateUser } from "../../services/workout.service";
 import {
   addNutritionEntry,
+  formatDisplayDate,
   getCalorieTarget,
   getMacrosForDate,
   getProteinTarget,
+  localDateString,
 } from "../../services/tracking.service";
+
+function daysAgoDateString(n: number): string {
+  const base = new Date(`${localDateString()}T12:00:00Z`);
+  base.setUTCDate(base.getUTCDate() - n);
+  return localDateString(base);
+}
+
+// Returns a YYYY-MM-DD date if the token is a date specifier, otherwise null.
+function resolveDateToken(token: string): string | null {
+  const t = token.toLowerCase();
+  if (t === "вчора") return daysAgoDateString(1);
+  if (t === "позавчора") return daysAgoDateString(2);
+  const rel = /^-(\d{1,2})$/.exec(t);
+  if (rel) return daysAgoDateString(Number(rel[1]));
+  if (/^\d{4}-\d{2}-\d{2}$/.test(t)) return t;
+  return null;
+}
+
+function dayLabel(date: string): string {
+  if (date === localDateString()) return "Сьогодні";
+  return formatDisplayDate(new Date(`${date}T12:00:00Z`));
+}
 
 function formatEstimate(food: PendingFood, confidence?: string): string {
   let text =
@@ -29,14 +53,14 @@ function formatEstimate(food: PendingFood, confidence?: string): string {
   return text;
 }
 
-async function showDailyTotals(ctx: BotContext, userId: string) {
-  const macros = await getMacrosForDate(userId);
+async function showDailyTotals(ctx: BotContext, userId: string, date = localDateString()) {
+  const macros = await getMacrosForDate(userId, date);
   const calTarget = await getCalorieTarget(userId);
   const proteinTarget = await getProteinTarget(userId);
   const calLeft = calTarget - macros.calories;
 
   await ctx.reply(
-    `📊 <b>Сьогодні разом</b>\n` +
+    `📊 <b>${dayLabel(date)} разом</b>\n` +
       `🔥 ${macros.calories} / ${calTarget} ккал ${calLeft >= 0 ? `(залишок ${calLeft})` : `(перебір ${-calLeft})`}\n` +
       `🥩 Білки: ${macros.protein} / ${proteinTarget} г\n` +
       `🧈 Жири: ${macros.fat} г • 🍞 Вуглеводи: ${macros.carbs} г`,
@@ -163,8 +187,11 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
     ctx.session.awaitingInput = "food_macros";
     await ctx.reply(
       "Введи КБЖВ через пробіл: <code>ккал білки жири вуглеводи [назва]</code>\n" +
-        "Наприклад: <code>250 6 12 30 печиво</code>\n" +
-        "Назва — необов'язкова.",
+        "Наприклад: <code>250 6 12 30 печиво</code>\n\n" +
+        "Щоб додати за минулий день — почни з дати:\n" +
+        "<code>вчора 250 6 12 30 печиво</code>\n" +
+        "<code>-2 600 40 20 50</code> (2 дні тому)\n" +
+        "<code>2026-05-29 600 40 20 50</code>",
       { parse_mode: "HTML" },
     );
   });
@@ -180,11 +207,20 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
       return next();
     }
 
-    const tokens = ctx.message.text.trim().split(/\s+/);
+    let tokens = ctx.message.text.trim().split(/\s+/);
+
+    let date = localDateString();
+    const maybeDate = resolveDateToken(tokens[0]);
+    if (maybeDate) {
+      date = maybeDate;
+      tokens = tokens.slice(1);
+    }
+
     const nums = tokens.slice(0, 4).map((x) => Number(x.replace(",", ".")));
     if (nums.length < 4 || nums.some((n) => !Number.isFinite(n) || n < 0)) {
       await ctx.reply(
-        "Формат: <code>ккал білки жири вуглеводи [назва]</code>, напр. <code>650 45 20 60 перекус</code>",
+        "Формат: <code>[дата] ккал білки жири вуглеводи [назва]</code>\n" +
+          "Напр.: <code>650 45 20 60 перекус</code> або <code>вчора 650 45 20 60</code>",
         { parse_mode: "HTML" },
       );
       return;
@@ -196,11 +232,11 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
     const labelFromText = tokens.slice(4).join(" ").trim();
     const label = labelFromText || ctx.session.pendingFood?.label || "Їжа (вручну)";
 
-    await addNutritionEntry(user.id, { calories, protein, fat, carbs, label });
+    await addNutritionEntry(user.id, { calories, protein, fat, carbs, label }, date);
     ctx.session.awaitingInput = null;
     ctx.session.pendingFood = null;
 
-    await ctx.reply(`✅ Записано: ${Math.round(calories)} ккал.`);
-    await showDailyTotals(ctx, user.id);
+    await ctx.reply(`✅ Записано (${dayLabel(date)}): ${Math.round(calories)} ккал.`);
+    await showDailyTotals(ctx, user.id, date);
   });
 }

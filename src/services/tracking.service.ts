@@ -139,6 +139,41 @@ export async function getProteinHistory(userId: string, days = 14) {
     .sort((a, b) => a.date.localeCompare(b.date));
 }
 
+// ---- Water ----
+
+export async function addWater(userId: string, ml: number, date = localDateString()) {
+  return prisma.waterLog.create({
+    data: { userId, ml: Math.round(ml), date },
+  });
+}
+
+export async function getWaterForDate(userId: string, date = localDateString()): Promise<number> {
+  const result = await prisma.waterLog.aggregate({
+    where: { userId, date },
+    _sum: { ml: true },
+  });
+  return result._sum.ml ?? 0;
+}
+
+export async function getWaterTarget(userId: string): Promise<number> {
+  const setting = await prisma.reminderSetting.findUnique({ where: { userId } });
+  return setting?.waterTargetMl ?? 3000;
+}
+
+export async function resetWaterForDate(userId: string, date = localDateString()) {
+  return prisma.waterLog.deleteMany({ where: { userId, date } });
+}
+
+export async function undoLastWater(userId: string, date = localDateString()) {
+  const last = await prisma.waterLog.findFirst({
+    where: { userId, date },
+    orderBy: { recordedAt: "desc" },
+  });
+  if (!last) return null;
+  await prisma.waterLog.delete({ where: { id: last.id } });
+  return last;
+}
+
 // ---- Reminder settings ----
 
 export async function getReminderSetting(userId: string) {
@@ -158,6 +193,8 @@ export async function upsertReminderSetting(
     digestEnabled: boolean;
     supplementsEnabled: boolean;
     supplementsHour: number;
+    waterEnabled: boolean;
+    waterTargetMl: number;
   }> = {},
 ) {
   return prisma.reminderSetting.upsert({

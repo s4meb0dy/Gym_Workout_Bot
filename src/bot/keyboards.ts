@@ -10,6 +10,7 @@ export const mainMenuKeyboard = new Keyboard()
   .text("⚖️ Вага тіла")
   .text("🍗 Білок")
   .row()
+  .text("💧 Вода")
   .text("🛠 Інструменти")
   .resized()
   .persistent();
@@ -119,11 +120,14 @@ export function reminderSettingsKeyboard(setting: {
   backupEnabled: boolean;
   digestEnabled: boolean;
   supplementsEnabled: boolean;
+  waterEnabled: boolean;
   workoutHour: number;
   proteinHour: number;
   supplementsHour: number;
   proteinTarget: number;
+  waterTargetMl: number;
 }) {
+  const waterLiters = (setting.waterTargetMl / 1000).toFixed(setting.waterTargetMl % 1000 === 0 ? 0 : 1);
   return new InlineKeyboard()
     .text(
       `${setting.workoutEnabled ? "✅" : "⬜"} Нагадування про тренування (${setting.workoutHour}:00)`,
@@ -140,13 +144,19 @@ export function reminderSettingsKeyboard(setting: {
       "rem_toggle_supplements",
     )
     .row()
+    .text(`${setting.waterEnabled ? "✅" : "⬜"} Нагадування про воду (12/16/20:00)`, "rem_toggle_water")
+    .row()
     .text(`${setting.digestEnabled ? "✅" : "⬜"} Тижневий підсумок (Нд 19:00)`, "rem_toggle_digest")
     .row()
     .text(`${setting.backupEnabled ? "✅" : "⬜"} Щоденний бекап БД`, "rem_toggle_backup")
     .row()
     .text("🍗 Ціль білка: −10", "rem_protein_minus")
     .text(`${setting.proteinTarget} г`, "rem_noop")
-    .text("+10", "rem_protein_plus");
+    .text("+10", "rem_protein_plus")
+    .row()
+    .text("💧 Ціль води: −250", "rem_water_minus")
+    .text(`${waterLiters} л`, "rem_noop")
+    .text("+250", "rem_water_plus");
 }
 
 export function finishOnlyKeyboard() {

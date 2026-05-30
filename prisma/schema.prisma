@@ -16,7 +16,19 @@ model User {
   sessions      WorkoutSession[]
   bodyWeights   BodyWeight[]
   nutritionLogs NutritionLog[]
+  waterLogs     WaterLog[]
   reminder      ReminderSetting?
+}
+
+model WaterLog {
+  id         String   @id @default(cuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date       String // YYYY-MM-DD (local day) for aggregation
+  ml         Int
+  recordedAt DateTime @default(now())
+
+  @@index([userId, date])
 }
 
 model BodyWeight {
@@ -59,6 +71,8 @@ model ReminderSetting {
   digestEnabled      Boolean @default(true)
   supplementsEnabled Boolean @default(true)
   supplementsHour    Int     @default(21)
+  waterEnabled       Boolean @default(true)
+  waterTargetMl      Int     @default(3000)
 }
 
 model WorkoutDay {
