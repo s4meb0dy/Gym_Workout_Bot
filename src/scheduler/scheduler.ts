@@ -13,9 +13,9 @@ import { buildWeeklyDigest } from "../services/digest.service";
 
 const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
   Mon: 1,
-  Tue: 2,
-  Thu: 3,
-  Fri: 4,
+  Wed: 2,
+  Fri: 3,
+  Sun: 4,
 };
 
 const BACKUP_HOUR = 3;

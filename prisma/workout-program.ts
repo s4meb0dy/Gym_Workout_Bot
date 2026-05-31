@@ -152,7 +152,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
   },
   {
     dayNumber: 2,
-    weekday: "Вівторок",
+    weekday: "Середа",
     name: "Низ A (акцент квадрицепс)",
     exercises: withWarmup([
       {
@@ -227,7 +227,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
   },
   {
     dayNumber: 3,
-    weekday: "Четвер",
+    weekday: "П'ятниця",
     name: "Верх B (вертикальні жими та тяги)",
     exercises: withWarmup([
       {
@@ -332,7 +332,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
   },
   {
     dayNumber: 4,
-    weekday: "П'ятниця",
+    weekday: "Неділя",
     name: "Низ B (акцент біцепс стегна та сідниці)",
     exercises: withWarmup([
       {
