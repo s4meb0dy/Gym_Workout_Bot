@@ -212,5 +212,5 @@ export async function getActiveReminderSettings() {
 
 export async function getProteinTarget(userId: string): Promise<number> {
   const setting = await prisma.reminderSetting.findUnique({ where: { userId } });
-  return setting?.proteinTarget ?? 160;
+  return setting?.proteinTarget ?? 150;
 }

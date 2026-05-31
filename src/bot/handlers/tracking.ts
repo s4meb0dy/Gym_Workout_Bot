@@ -212,7 +212,7 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
     if (!ctx.from || !ctx.chat) return;
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     const current = await getReminderSetting(user.id);
-    const target = Math.max(50, Math.min(400, (current?.proteinTarget ?? 160) + delta));
+    const target = Math.max(50, Math.min(400, (current?.proteinTarget ?? 150) + delta));
     const updated = await upsertReminderSetting(user.id, ctx.chat.id, { proteinTarget: target });
     await ctx.answerCallbackQuery({ text: `Ціль: ${target} г` });
     try {
