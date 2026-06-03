@@ -228,11 +228,18 @@ export function bodyWeightEntryKeyboard(id: string) {
 export function nutritionListKeyboard(
   date: string,
   entries: Array<{ id: string; label: string }>,
+  nav: { prev: string; next: string | null },
 ) {
+  const ddmm = (d: string) => `${d.slice(8, 10)}.${d.slice(5, 7)}`;
   const keyboard = new InlineKeyboard();
   for (const entry of entries) {
     keyboard.text(entry.label, `nl:${entry.id}`).row();
   }
+  keyboard.text(`◀️ ${ddmm(nav.prev)}`, `nl_list:${nav.prev}`);
+  if (nav.next) {
+    keyboard.text(`${ddmm(nav.next)} ▶️`, `nl_list:${nav.next}`);
+  }
+  keyboard.row();
   keyboard.text("🏠 Головне меню", "back_to_menu");
   return keyboard;
 }

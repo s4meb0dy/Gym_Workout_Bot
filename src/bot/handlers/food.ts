@@ -39,6 +39,12 @@ function dayLabel(date: string): string {
   return formatDisplayDate(new Date(`${date}T12:00:00Z`));
 }
 
+function shiftDate(date: string, delta: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return localDateString(d);
+}
+
 function formatEstimate(food: PendingFood, confidence?: string): string {
   let text =
     `🍽 <b>${food.label}</b>\n\n` +
@@ -91,18 +97,17 @@ async function showNutritionList(ctx: BotContext, date: string, edit = true) {
   if (!ctx.from) return;
   const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
   const entries = await getNutritionEntries(user.id, date);
-  if (entries.length === 0) {
-    const text = `📋 ${dayLabel(date)}: записів немає.`;
-    if (edit) {
-      await ctx.editMessageText(text).catch(() => undefined);
-    } else {
-      await ctx.reply(text);
-    }
-    return;
-  }
+
+  const today = localDateString();
+  const nav = { prev: shiftDate(date, -1), next: date < today ? shiftDate(date, 1) : null };
   const list = entries.map((e) => ({ id: e.id, label: nutritionEntryLabel(e) }));
-  const text = `📋 <b>${dayLabel(date)} — записи</b>\nОбери, щоб змінити або видалити:`;
-  const markup = nutritionListKeyboard(date, list);
+
+  const text =
+    entries.length > 0
+      ? `📋 <b>${dayLabel(date)} — записи</b>\nОбери, щоб змінити або видалити. Гортай дні стрілками.`
+      : `📋 <b>${dayLabel(date)}</b>\nЗаписів немає. Гортай дні стрілками нижче.`;
+  const markup = nutritionListKeyboard(date, list, nav);
+
   if (edit) {
     await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: markup }).catch(() => undefined);
   } else {
@@ -132,7 +137,10 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     await showDailyTotals(ctx, user.id);
 
-    const keyboard = new InlineKeyboard().text("✍️ Ввести вручну", "food_manual");
+    const keyboard = new InlineKeyboard()
+      .text("✍️ Ввести вручну", "food_manual")
+      .row()
+      .text("📋 Записи по днях", `nl_list:${localDateString()}`);
     if (isFoodVisionEnabled()) {
       await ctx.reply(
         "Надішли фото страви (можна з підписом, напр. «~250 г курки з рисом») — і я порахую КБЖВ.\n\nАбо введи цифри вручну для перекусу:",
