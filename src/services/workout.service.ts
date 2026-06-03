@@ -85,6 +85,31 @@ export async function deleteExercise(exerciseId: number) {
   return prisma.exercise.delete({ where: { id: exerciseId } });
 }
 
+export async function moveExercise(
+  exerciseId: number,
+  direction: "up" | "down",
+): Promise<boolean> {
+  const ex = await prisma.exercise.findUnique({ where: { id: exerciseId } });
+  if (!ex) return false;
+
+  const neighbor = await prisma.exercise.findFirst({
+    where: {
+      workoutDayId: ex.workoutDayId,
+      orderIndex: direction === "up" ? { lt: ex.orderIndex } : { gt: ex.orderIndex },
+    },
+    orderBy: { orderIndex: direction === "up" ? "desc" : "asc" },
+  });
+  if (!neighbor) return false;
+
+  // Swap orderIndex via a temporary value to respect the (day, orderIndex) unique constraint.
+  await prisma.$transaction([
+    prisma.exercise.update({ where: { id: ex.id }, data: { orderIndex: -1 } }),
+    prisma.exercise.update({ where: { id: neighbor.id }, data: { orderIndex: ex.orderIndex } }),
+    prisma.exercise.update({ where: { id: ex.id }, data: { orderIndex: neighbor.orderIndex } }),
+  ]);
+  return true;
+}
+
 export async function addExerciseToDay(workoutDayId: number, name: string) {
   const last = await prisma.exercise.findFirst({
     where: { workoutDayId },

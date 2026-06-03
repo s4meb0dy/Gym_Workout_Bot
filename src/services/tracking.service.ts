@@ -43,6 +43,19 @@ export async function getLatestBodyWeight(userId: string) {
 }
 
 /** Просте ковзне середнє для згладжування добових коливань. */
+export async function getBodyWeightById(id: string) {
+  return prisma.bodyWeight.findUnique({ where: { id } });
+}
+
+export async function updateBodyWeight(id: string, weightKg: number) {
+  return prisma.bodyWeight.update({ where: { id }, data: { weightKg } });
+}
+
+export async function deleteBodyWeight(id: string) {
+  return prisma.bodyWeight.delete({ where: { id } });
+}
+
+/** Просте ковзне середнє для згладжування добових коливань. */
 export function movingAverage(values: number[], window = 7): number[] {
   return values.map((_, i) => {
     const start = Math.max(0, i - window + 1);
@@ -84,6 +97,34 @@ export async function addNutritionEntry(
       label: entry.label ?? null,
     },
   });
+}
+
+export async function getNutritionEntries(userId: string, date = localDateString()) {
+  return prisma.nutritionLog.findMany({
+    where: { userId, date },
+    orderBy: { recordedAt: "asc" },
+  });
+}
+
+export async function getNutritionEntryById(id: string) {
+  return prisma.nutritionLog.findUnique({ where: { id } });
+}
+
+export async function updateNutritionEntry(id: string, entry: MacroEntry) {
+  return prisma.nutritionLog.update({
+    where: { id },
+    data: {
+      calories: entry.calories,
+      proteinGrams: entry.protein,
+      fatGrams: entry.fat,
+      carbsGrams: entry.carbs,
+      label: entry.label ?? null,
+    },
+  });
+}
+
+export async function deleteNutritionEntry(id: string) {
+  return prisma.nutritionLog.delete({ where: { id } });
 }
 
 export interface DailyMacros {

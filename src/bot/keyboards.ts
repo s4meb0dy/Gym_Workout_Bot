@@ -194,12 +194,55 @@ export function editProgramExerciseListKeyboard(
   exercises: Array<{ id: number; name: string }>,
 ) {
   const keyboard = new InlineKeyboard();
-  for (const ex of exercises) {
-    keyboard.text(ex.name, `ep_ex:${ex.id}`).row();
-  }
+  exercises.forEach((ex, index) => {
+    keyboard.text(ex.name, `ep_ex:${ex.id}`);
+    keyboard.text(index === 0 ? "·" : "⬆️", index === 0 ? "ep_noop" : `ep_up:${ex.id}`);
+    keyboard.text(
+      index === exercises.length - 1 ? "·" : "⬇️",
+      index === exercises.length - 1 ? "ep_noop" : `ep_down:${ex.id}`,
+    );
+    keyboard.row();
+  });
   keyboard.text("➕ Додати вправу", `ep_add:${dayNumber}`).row();
   keyboard.text("🏠 Головне меню", "back_to_menu");
   return keyboard;
+}
+
+export function bodyWeightListKeyboard(entries: Array<{ id: string; label: string }>) {
+  const keyboard = new InlineKeyboard();
+  for (const entry of entries) {
+    keyboard.text(entry.label, `bw:${entry.id}`).row();
+  }
+  keyboard.text("🏠 Головне меню", "back_to_menu");
+  return keyboard;
+}
+
+export function bodyWeightEntryKeyboard(id: string) {
+  return new InlineKeyboard()
+    .text("✏️ Змінити", `bw_edit:${id}`)
+    .text("🗑 Видалити", `bw_del:${id}`)
+    .row()
+    .text("⬅️ До списку", "bw_list");
+}
+
+export function nutritionListKeyboard(
+  date: string,
+  entries: Array<{ id: string; label: string }>,
+) {
+  const keyboard = new InlineKeyboard();
+  for (const entry of entries) {
+    keyboard.text(entry.label, `nl:${entry.id}`).row();
+  }
+  keyboard.text("🏠 Головне меню", "back_to_menu");
+  return keyboard;
+}
+
+export function nutritionEntryKeyboard(id: string, date: string) {
+  return new InlineKeyboard()
+    .text("✏️ Змінити", `nl_edit:${id}`)
+    .text("🗑 Видалити", `nl_del:${id}`)
+    .row()
+    .text("⬅️ До списку", `nl_list:${date}`);
 }
 
 export function editExerciseKeyboard(exercise: {

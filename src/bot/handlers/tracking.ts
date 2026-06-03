@@ -1,11 +1,19 @@
-import { Bot } from "grammy";
+import { Bot, InlineKeyboard } from "grammy";
 import { BotContext } from "../bot";
-import { backToMenuKeyboard, reminderSettingsKeyboard, toolsKeyboard } from "../keyboards";
+import {
+  backToMenuKeyboard,
+  bodyWeightEntryKeyboard,
+  bodyWeightListKeyboard,
+  reminderSettingsKeyboard,
+  toolsKeyboard,
+} from "../keyboards";
 import { buildLineChartUrl } from "../../services/chart.service";
 import { findOrCreateUser } from "../../services/workout.service";
 import {
   addProtein,
+  deleteBodyWeight,
   formatDisplayDate,
+  getBodyWeightById,
   getBodyWeights,
   getLatestBodyWeight,
   getProteinForDate,
@@ -15,6 +23,7 @@ import {
   logBodyWeight,
   movingAverage,
   resetProteinForDate,
+  updateBodyWeight,
   upsertReminderSetting,
 } from "../../services/tracking.service";
 
@@ -37,8 +46,12 @@ async function showBodyWeight(ctx: BotContext, value?: number) {
       ? `Остання вага: <b>${latest.weightKg} кг</b> (${formatDisplayDate(latest.recordedAt)}).`
       : "Записів ще немає.";
     ctx.session.awaitingInput = "weight";
+    const keyboard = latest
+      ? new InlineKeyboard().text("📝 Редагувати записи", "bw_list")
+      : undefined;
     await ctx.reply(`⚖️ <b>Вага тіла</b>\n${hint}\n\nВведи поточну вагу, напр. <code>74.8</code>`, {
       parse_mode: "HTML",
+      reply_markup: keyboard,
     });
     return;
   }
@@ -76,6 +89,45 @@ async function showBodyWeight(ctx: BotContext, value?: number) {
     caption: `✅ Записано: <b>${value} кг</b>\nДинаміка за період: <b>${trend}</b>`,
     parse_mode: "HTML",
   });
+}
+
+async function showWeightList(ctx: BotContext, edit = false) {
+  if (!ctx.from) return;
+  const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+  const weights = await getBodyWeights(user.id, 12);
+  if (weights.length === 0) {
+    const text = "⚖️ Записів ваги ще немає.";
+    if (edit) {
+      await ctx.editMessageText(text).catch(() => undefined);
+    } else {
+      await ctx.reply(text);
+    }
+    return;
+  }
+
+  const entries = [...weights]
+    .reverse()
+    .map((w) => ({ id: w.id, label: `${formatDisplayDate(w.recordedAt)} — ${w.weightKg} кг` }));
+  const text = "⚖️ <b>Записи ваги</b>\nОбери запис, щоб змінити або видалити:";
+  const markup = bodyWeightListKeyboard(entries);
+  if (edit) {
+    await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: markup }).catch(() => undefined);
+  } else {
+    await ctx.reply(text, { parse_mode: "HTML", reply_markup: markup });
+  }
+}
+
+async function showWeightEntry(ctx: BotContext, id: string) {
+  const w = await getBodyWeightById(id);
+  if (!w) {
+    await ctx.answerCallbackQuery({ text: "Запис не знайдено" });
+    await showWeightList(ctx, true);
+    return;
+  }
+  const text = `⚖️ <b>${w.weightKg} кг</b>\n📅 ${formatDisplayDate(w.recordedAt)}`;
+  await ctx
+    .editMessageText(text, { parse_mode: "HTML", reply_markup: bodyWeightEntryKeyboard(id) })
+    .catch(() => undefined);
 }
 
 async function showProtein(ctx: BotContext, value?: number) {
@@ -257,10 +309,40 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
     await ctx.reply(text, { parse_mode: "HTML", reply_markup: backToMenuKeyboard() });
   });
 
+  bot.callbackQuery("bw_list", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showWeightList(ctx, true);
+  });
+
+  bot.callbackQuery(/^bw:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showWeightEntry(ctx, ctx.match![1]);
+  });
+
+  bot.callbackQuery(/^bw_edit:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const id = ctx.match![1];
+    const w = await getBodyWeightById(id);
+    if (!w) {
+      await showWeightList(ctx, true);
+      return;
+    }
+    ctx.session.awaitingInput = "weight_edit";
+    ctx.session.editEntryId = id;
+    await ctx.reply(`Введи нову вагу для запису ${formatDisplayDate(w.recordedAt)} (зараз ${w.weightKg} кг):`);
+  });
+
+  bot.callbackQuery(/^bw_del:(.+)$/, async (ctx) => {
+    const id = ctx.match![1];
+    await deleteBodyWeight(id).catch(() => undefined);
+    await ctx.answerCallbackQuery({ text: "Видалено" });
+    await showWeightList(ctx, true);
+  });
+
   // Routed text input for weight/protein quick entry.
   bot.on("message:text", async (ctx, next) => {
     const mode = ctx.session.awaitingInput;
-    if (mode !== "weight" && mode !== "protein") {
+    if (mode !== "weight" && mode !== "protein" && mode !== "weight_edit") {
       return next();
     }
 
@@ -286,6 +368,19 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
 
     if (mode === "weight") {
       await showBodyWeight(ctx, value);
+    } else if (mode === "weight_edit") {
+      if (value < 30 || value > 300) {
+        await ctx.reply("Це не схоже на вагу тіла. Введи число в кг, напр. 74.8");
+        return;
+      }
+      const id = ctx.session.editEntryId;
+      ctx.session.awaitingInput = null;
+      ctx.session.editEntryId = null;
+      if (id) {
+        await updateBodyWeight(id, value).catch(() => undefined);
+      }
+      await ctx.reply(`✅ Оновлено вагу: <b>${value} кг</b>.`, { parse_mode: "HTML" });
+      await showWeightList(ctx);
     } else if (mode === "protein") {
       await showProtein(ctx, value);
     }

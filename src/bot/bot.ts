@@ -24,8 +24,16 @@ export interface PendingFood {
 
 export interface SessionData {
   awaitingSetInput: boolean;
-  awaitingInput?: "weight" | "protein" | "food_macros" | "water" | null;
+  awaitingInput?:
+    | "weight"
+    | "protein"
+    | "food_macros"
+    | "water"
+    | "weight_edit"
+    | "food_edit"
+    | null;
   editingSetId?: string | null;
+  editEntryId?: string | null;
   quickWeight?: number | null;
   editProgram?: { mode: "rename" | "add"; dayNumber: number; exerciseId?: number } | null;
   pendingFood?: PendingFood | null;
@@ -42,6 +50,7 @@ export function createBot(): Bot<BotContext> {
         awaitingSetInput: false,
         awaitingInput: null,
         editingSetId: null,
+        editEntryId: null,
         quickWeight: null,
         editProgram: null,
         pendingFood: null,

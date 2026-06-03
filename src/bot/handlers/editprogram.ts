@@ -14,6 +14,7 @@ import {
   getWorkoutDayByNumber,
   getWorkoutDayById,
   getWorkoutDays,
+  moveExercise,
   renameExercise,
   updateExerciseTargets,
 } from "../../services/workout.service";
@@ -48,6 +49,21 @@ async function showExerciseList(ctx: BotContext, dayNumber: number) {
       day.exercises.map((e) => ({ id: e.id, name: e.name })),
     ),
   });
+}
+
+async function refreshExerciseList(ctx: BotContext, dayNumber: number) {
+  const day = await getWorkoutDayByNumber(dayNumber);
+  if (!day) return;
+  try {
+    await ctx.editMessageReplyMarkup({
+      reply_markup: editProgramExerciseListKeyboard(
+        dayNumber,
+        day.exercises.map((e) => ({ id: e.id, name: e.name })),
+      ),
+    });
+  } catch {
+    // ignore "message not modified"
+  }
 }
 
 async function showExerciseEditor(ctx: BotContext, exerciseId: number) {
@@ -127,6 +143,24 @@ export function registerEditProgramHandlers(bot: Bot<BotContext>) {
   });
 
   bot.callbackQuery("ep_noop", (ctx) => ctx.answerCallbackQuery());
+
+  const moveHandler = (direction: "up" | "down") => async (ctx: BotContext) => {
+    const exerciseId = Number(ctx.match![1]);
+    const exercise = await getExerciseById(exerciseId);
+    if (!exercise) {
+      await ctx.answerCallbackQuery({ text: "Вправу не знайдено" });
+      return;
+    }
+    const moved = await moveExercise(exerciseId, direction);
+    await ctx.answerCallbackQuery({ text: moved ? (direction === "up" ? "Вгору ⬆️" : "Вниз ⬇️") : "Вже скраю" });
+    if (moved) {
+      const day = await getWorkoutDayById(exercise.workoutDayId);
+      if (day) await refreshExerciseList(ctx, day.dayNumber);
+    }
+  };
+
+  bot.callbackQuery(/^ep_up:(\d+)$/, moveHandler("up"));
+  bot.callbackQuery(/^ep_down:(\d+)$/, moveHandler("down"));
 
   const stepHandlers: Array<{
     pattern: RegExp;

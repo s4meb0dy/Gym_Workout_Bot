@@ -1,16 +1,20 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { BotContext, PendingFood } from "../bot";
-import { foodConfirmKeyboard } from "../keyboards";
+import { foodConfirmKeyboard, nutritionEntryKeyboard, nutritionListKeyboard } from "../keyboards";
 import { config } from "../../config/env";
 import { analyzeFoodPhoto, isFoodVisionEnabled } from "../../services/food-vision";
 import { findOrCreateUser } from "../../services/workout.service";
 import {
   addNutritionEntry,
+  deleteNutritionEntry,
   formatDisplayDate,
   getCalorieTarget,
   getMacrosForDate,
+  getNutritionEntries,
+  getNutritionEntryById,
   getProteinTarget,
   localDateString,
+  updateNutritionEntry,
 } from "../../services/tracking.service";
 
 function daysAgoDateString(n: number): string {
@@ -53,19 +57,73 @@ function formatEstimate(food: PendingFood, confidence?: string): string {
   return text;
 }
 
+function nutritionEntryLabel(e: {
+  label: string | null;
+  calories: number;
+  proteinGrams: number;
+}): string {
+  const name = e.label ?? (e.calories > 0 ? "Їжа" : "Білок");
+  if (e.calories > 0) {
+    return `${name} · ${Math.round(e.calories)} ккал`;
+  }
+  return `${name} · ${Math.round(e.proteinGrams)} г білка`;
+}
+
 async function showDailyTotals(ctx: BotContext, userId: string, date = localDateString()) {
   const macros = await getMacrosForDate(userId, date);
   const calTarget = await getCalorieTarget(userId);
   const proteinTarget = await getProteinTarget(userId);
   const calLeft = calTarget - macros.calories;
+  const entries = await getNutritionEntries(userId, date);
+  const keyboard =
+    entries.length > 0 ? new InlineKeyboard().text("📋 Записи дня", `nl_list:${date}`) : undefined;
 
   await ctx.reply(
     `📊 <b>${dayLabel(date)} разом</b>\n` +
       `🔥 ${macros.calories} / ${calTarget} ккал ${calLeft >= 0 ? `(залишок ${calLeft})` : `(перебір ${-calLeft})`}\n` +
       `🥩 Білки: ${macros.protein} / ${proteinTarget} г\n` +
       `🧈 Жири: ${macros.fat} г • 🍞 Вуглеводи: ${macros.carbs} г`,
-    { parse_mode: "HTML" },
+    { parse_mode: "HTML", reply_markup: keyboard },
   );
+}
+
+async function showNutritionList(ctx: BotContext, date: string, edit = true) {
+  if (!ctx.from) return;
+  const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+  const entries = await getNutritionEntries(user.id, date);
+  if (entries.length === 0) {
+    const text = `📋 ${dayLabel(date)}: записів немає.`;
+    if (edit) {
+      await ctx.editMessageText(text).catch(() => undefined);
+    } else {
+      await ctx.reply(text);
+    }
+    return;
+  }
+  const list = entries.map((e) => ({ id: e.id, label: nutritionEntryLabel(e) }));
+  const text = `📋 <b>${dayLabel(date)} — записи</b>\nОбери, щоб змінити або видалити:`;
+  const markup = nutritionListKeyboard(date, list);
+  if (edit) {
+    await ctx.editMessageText(text, { parse_mode: "HTML", reply_markup: markup }).catch(() => undefined);
+  } else {
+    await ctx.reply(text, { parse_mode: "HTML", reply_markup: markup });
+  }
+}
+
+async function showNutritionEntry(ctx: BotContext, id: string) {
+  const e = await getNutritionEntryById(id);
+  if (!e) {
+    await ctx.answerCallbackQuery({ text: "Запис не знайдено" });
+    return;
+  }
+  const text =
+    `🍽 <b>${e.label ?? "Запис"}</b>\n` +
+    `🔥 ${Math.round(e.calories)} ккал\n` +
+    `🥩 ${Math.round(e.proteinGrams)} г • 🧈 ${Math.round(e.fatGrams)} г • 🍞 ${Math.round(e.carbsGrams)} г\n` +
+    `📅 ${dayLabel(e.date)}`;
+  await ctx
+    .editMessageText(text, { parse_mode: "HTML", reply_markup: nutritionEntryKeyboard(id, e.date) })
+    .catch(() => undefined);
 }
 
 export function registerFoodHandlers(bot: Bot<BotContext>) {
@@ -202,18 +260,58 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
     ctx.session.awaitingInput = null;
   });
 
+  bot.callbackQuery(/^nl_list:(\d{4}-\d{2}-\d{2})$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showNutritionList(ctx, ctx.match![1], true);
+  });
+
+  bot.callbackQuery(/^nl:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    await showNutritionEntry(ctx, ctx.match![1]);
+  });
+
+  bot.callbackQuery(/^nl_edit:(.+)$/, async (ctx) => {
+    await ctx.answerCallbackQuery();
+    const id = ctx.match![1];
+    const e = await getNutritionEntryById(id);
+    if (!e) {
+      await ctx.reply("Запис не знайдено.");
+      return;
+    }
+    ctx.session.awaitingInput = "food_edit";
+    ctx.session.editEntryId = id;
+    await ctx.reply(
+      `Введи нові КБЖВ для «${e.label ?? "запис"}» через пробіл:\n` +
+        "<code>ккал білки жири вуглеводи [назва]</code>\n" +
+        `Зараз: <code>${Math.round(e.calories)} ${Math.round(e.proteinGrams)} ${Math.round(e.fatGrams)} ${Math.round(e.carbsGrams)}</code>`,
+      { parse_mode: "HTML" },
+    );
+  });
+
+  bot.callbackQuery(/^nl_del:(.+)$/, async (ctx) => {
+    const id = ctx.match![1];
+    const e = await getNutritionEntryById(id);
+    const date = e?.date ?? localDateString();
+    await deleteNutritionEntry(id).catch(() => undefined);
+    await ctx.answerCallbackQuery({ text: "Видалено" });
+    await showNutritionList(ctx, date, true);
+  });
+
   bot.on("message:text", async (ctx, next) => {
-    if (ctx.session.awaitingInput !== "food_macros") {
+    const mode = ctx.session.awaitingInput;
+    if (mode !== "food_macros" && mode !== "food_edit") {
       return next();
     }
 
     let tokens = ctx.message.text.trim().split(/\s+/);
 
     let date = localDateString();
-    const maybeDate = resolveDateToken(tokens[0]);
-    if (maybeDate) {
-      date = maybeDate;
-      tokens = tokens.slice(1);
+    if (mode === "food_macros") {
+      const maybeDate = resolveDateToken(tokens[0]);
+      if (maybeDate) {
+        date = maybeDate;
+        tokens = tokens.slice(1);
+      }
     }
 
     const nums = tokens.slice(0, 4).map((x) => Number(x.replace(",", ".")));
@@ -230,6 +328,23 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     const [calories, protein, fat, carbs] = nums;
     const labelFromText = tokens.slice(4).join(" ").trim();
+
+    if (mode === "food_edit") {
+      const id = ctx.session.editEntryId;
+      ctx.session.awaitingInput = null;
+      ctx.session.editEntryId = null;
+      if (!id) {
+        return;
+      }
+      const existing = await getNutritionEntryById(id);
+      const label = labelFromText || existing?.label || "Їжа";
+      await updateNutritionEntry(id, { calories, protein, fat, carbs, label });
+      const entryDate = existing?.date ?? date;
+      await ctx.reply(`✅ Оновлено: ${Math.round(calories)} ккал.`);
+      await showDailyTotals(ctx, user.id, entryDate);
+      return;
+    }
+
     const label = labelFromText || ctx.session.pendingFood?.label || "Їжа (вручну)";
 
     await addNutritionEntry(user.id, { calories, protein, fat, carbs, label }, date);
