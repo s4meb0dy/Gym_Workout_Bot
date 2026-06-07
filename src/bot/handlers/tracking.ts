@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { BotContext } from "../bot";
+import { askConfirm } from "../confirm";
 import {
   backToMenuKeyboard,
   bodyWeightEntryKeyboard,
@@ -334,8 +335,20 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
 
   bot.callbackQuery(/^bw_del:(.+)$/, async (ctx) => {
     const id = ctx.match![1];
+    const w = await getBodyWeightById(id);
+    const label = w ? `${w.weightKg} кг (${formatDisplayDate(w.recordedAt)})` : "запис";
+    await askConfirm(ctx, `🗑 <b>Видалити запис ваги</b> (${label})?`, `bw_del:${id}`);
+  });
+
+  bot.callbackQuery(/^cfm:bw_del:(.+)$/, async (ctx) => {
+    const id = ctx.match![1];
     await deleteBodyWeight(id).catch(() => undefined);
     await ctx.answerCallbackQuery({ text: "Видалено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
     await showWeightList(ctx, true);
   });
 

@@ -362,7 +362,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineNote: "73 кг",
       },
       {
-        name: "Підйоми на носки сидячи (Seated Calf Raises)",
+        name: "Підйоми на носки стоячи (Standing Calf Raises)",
         block: "Тренажери",
         targetSets: 4,
         targetRepsMin: 12,
@@ -370,10 +370,10 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 5,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 30,
-        baselineWeightMax: 30,
-        baselineNote: "30 кг",
-        technique: "Акцент на камбаловидний м'яз, повільне опускання",
+        baselineWeightMin: 50,
+        baselineWeightMax: 50,
+        baselineNote: "50 кг",
+        technique: "Повна амплітуда: глибоко вниз, максимально вгору, пауза зверху",
       },
       {
         name: "Розгинання рук з гантелями в нахилі (Kickbacks)",

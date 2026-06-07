@@ -12,6 +12,7 @@ import { registerAnalyticsHandlers } from "./handlers/analytics";
 import { registerToolsHandlers } from "./handlers/tools";
 import { registerHistoryHandlers } from "./handlers/history";
 import { registerEditProgramHandlers } from "./handlers/editprogram";
+import { registerConfirmHandlers } from "./confirm";
 import { mainMenuKeyboard } from "./keyboards";
 
 export interface PendingFood {
@@ -94,6 +95,7 @@ export function createBot(): Bot<BotContext> {
   registerToolsHandlers(bot);
   registerHistoryHandlers(bot);
   registerEditProgramHandlers(bot);
+  registerConfirmHandlers(bot);
   registerWorkoutHandlers(bot);
   registerProgramHandlers(bot);
   registerStatsHandlers(bot);

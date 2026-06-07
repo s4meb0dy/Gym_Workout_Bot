@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { BotContext, PendingFood } from "../bot";
+import { askConfirm } from "../confirm";
 import { foodConfirmKeyboard, nutritionEntryKeyboard, nutritionListKeyboard } from "../keyboards";
 import { config } from "../../config/env";
 import { analyzeFoodPhoto, isFoodVisionEnabled } from "../../services/food-vision";
@@ -299,9 +300,21 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
   bot.callbackQuery(/^nl_del:(.+)$/, async (ctx) => {
     const id = ctx.match![1];
     const e = await getNutritionEntryById(id);
+    const label = e ? nutritionEntryLabel(e) : "запис";
+    await askConfirm(ctx, `🗑 <b>Видалити запис КБЖВ</b>\n${label}?`, `nl_del:${id}`);
+  });
+
+  bot.callbackQuery(/^cfm:nl_del:(.+)$/, async (ctx) => {
+    const id = ctx.match![1];
+    const e = await getNutritionEntryById(id);
     const date = e?.date ?? localDateString();
     await deleteNutritionEntry(id).catch(() => undefined);
     await ctx.answerCallbackQuery({ text: "Видалено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
     await showNutritionList(ctx, date, true);
   });
 

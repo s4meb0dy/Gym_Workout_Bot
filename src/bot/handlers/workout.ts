@@ -1,6 +1,7 @@
 import { Bot } from "grammy";
 import { Exercise } from "@prisma/client";
 import { BotContext } from "../bot";
+import { askConfirm } from "../confirm";
 import {
   editCancelKeyboard,
   editSetListKeyboard,
@@ -514,6 +515,28 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
       return;
     }
 
+    const sets = await getSessionSets(session.id);
+    if (sets.length === 0) {
+      await ctx.answerCallbackQuery({ text: "Немає що скасовувати" });
+      return;
+    }
+
+    await askConfirm(ctx, "↩️ <b>Скасувати останній записаний підхід?</b>", "undo_set");
+  });
+
+  bot.callbackQuery("cfm:undo_set", async (ctx) => {
+    if (!ctx.from) {
+      return;
+    }
+
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const session = await getActiveSession(user.id);
+
+    if (!session) {
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
+      return;
+    }
+
     const removed = await deleteLastSet(session.id);
     if (!removed) {
       await ctx.answerCallbackQuery({ text: "Немає що скасовувати" });
@@ -521,6 +544,11 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     }
 
     await ctx.answerCallbackQuery({ text: "Останній підхід видалено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
 
     if (removed.weight > 0) {
       await ctx.reply(
@@ -595,8 +623,6 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
   });
 
   bot.callbackQuery("skip_to_next", async (ctx) => {
-    await ctx.answerCallbackQuery();
-
     if (!ctx.from) {
       return;
     }
@@ -605,17 +631,53 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     const session = await getActiveSession(user.id);
 
     if (!session) {
-      await ctx.reply("Немає активного тренування.");
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
       return;
     }
 
     const state = getCurrentExerciseState(session);
     if (!state) {
+      await ctx.answerCallbackQuery({ text: "Усі вправи виконано" });
       await ctx.reply("Усі вправи виконано.", { reply_markup: finishOnlyKeyboard() });
       return;
     }
 
     const remainingSets = state.exercise.targetSets - state.setNumber + 1;
+    await askConfirm(
+      ctx,
+      `⏭️ <b>Пропустити решту підходів (${remainingSets}) для «${state.exercise.name}»?</b>\n` +
+        "Решта підходів буде записана як пропущені (0×0).",
+      "skip_to_next",
+    );
+  });
+
+  bot.callbackQuery("cfm:skip_to_next", async (ctx) => {
+    if (!ctx.from) {
+      return;
+    }
+
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const session = await getActiveSession(user.id);
+
+    if (!session) {
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
+      return;
+    }
+
+    const state = getCurrentExerciseState(session);
+    if (!state) {
+      await ctx.answerCallbackQuery({ text: "Усі вправи виконано" });
+      return;
+    }
+
+    const remainingSets = state.exercise.targetSets - state.setNumber + 1;
+    await ctx.answerCallbackQuery({ text: "Вправу пропущено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
+
     await ctx.reply(`⏭️ Пропущено решту підходів (${remainingSets}) для «${state.exercise.name}».`);
 
     for (let i = state.setNumber; i <= state.exercise.targetSets; i++) {
@@ -626,8 +688,6 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
   });
 
   bot.callbackQuery("finish_workout", async (ctx) => {
-    await ctx.answerCallbackQuery();
-
     if (!ctx.from) {
       return;
     }
@@ -636,6 +696,25 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     const session = await getActiveSession(user.id);
 
     if (!session) {
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
+      ctx.session.awaitingSetInput = false;
+      await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard });
+      return;
+    }
+
+    await askConfirm(ctx, "✅ <b>Завершити тренування?</b>\nПідсумок буде збережено.", "finish_workout");
+  });
+
+  bot.callbackQuery("cfm:finish_workout", async (ctx) => {
+    if (!ctx.from) {
+      return;
+    }
+
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const session = await getActiveSession(user.id);
+
+    if (!session) {
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
       ctx.session.awaitingSetInput = false;
       await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard });
       return;
@@ -646,6 +725,13 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     ctx.session.quickWeight = null;
     ctx.session.editingSetId = null;
 
+    await ctx.answerCallbackQuery({ text: "Тренування завершено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
+
     await ctx.reply(formatWorkoutSummary(summary), {
       parse_mode: "HTML",
       reply_markup: mainMenuKeyboard,
@@ -653,8 +739,26 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
   });
 
   bot.callbackQuery("cancel_workout", async (ctx) => {
-    await ctx.answerCallbackQuery();
+    if (!ctx.from) {
+      return;
+    }
 
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const session = await getActiveSession(user.id);
+
+    if (!session) {
+      await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
+      return;
+    }
+
+    await askConfirm(
+      ctx,
+      "❌ <b>Скасувати тренування?</b>\nУсі записи цієї сесії будуть видалені без можливості відновлення.",
+      "cancel_workout",
+    );
+  });
+
+  bot.callbackQuery("cfm:cancel_workout", async (ctx) => {
     if (!ctx.from) {
       return;
     }
@@ -664,6 +768,13 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     ctx.session.awaitingSetInput = false;
     ctx.session.quickWeight = null;
     ctx.session.editingSetId = null;
+
+    await ctx.answerCallbackQuery({ text: "Тренування скасовано" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
 
     await ctx.reply("Тренування скасовано.", { reply_markup: mainMenuKeyboard });
   });

@@ -1,5 +1,6 @@
 import { Bot } from "grammy";
 import { BotContext } from "../bot";
+import { askConfirm } from "../confirm";
 import {
   editExerciseKeyboard,
   editProgramDayKeyboard,
@@ -236,11 +237,28 @@ export function registerEditProgramHandlers(bot: Bot<BotContext>) {
       return;
     }
     const exercise = await getExerciseById(exerciseId);
+    const name = exercise?.name ?? "вправу";
+    await askConfirm(ctx, `🗑 <b>Видалити вправу</b> «${name}»?`, `ep_del:${exerciseId}`);
+  });
+
+  bot.callbackQuery(/^cfm:ep_del:(\d+)$/, async (ctx) => {
+    const exerciseId = Number(ctx.match![1]);
+    const hasHistory = await exerciseHasHistory(exerciseId);
+    if (hasHistory) {
+      await ctx.answerCallbackQuery({ text: "Має історію — видалення недоступне" });
+      return;
+    }
+    const exercise = await getExerciseById(exerciseId);
     const dayNumber = exercise
       ? (await getWorkoutDayById(exercise.workoutDayId))?.dayNumber ?? 1
       : 1;
     await deleteExercise(exerciseId);
     await ctx.answerCallbackQuery({ text: "Вправу видалено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
     await showExerciseList(ctx, dayNumber);
   });
 

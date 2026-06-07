@@ -1,5 +1,6 @@
 import { Bot, InlineKeyboard } from "grammy";
 import { BotContext } from "../bot";
+import { askConfirm } from "../confirm";
 import { findOrCreateUser } from "../../services/workout.service";
 import {
   addWater,
@@ -113,10 +114,19 @@ export function registerWaterHandlers(bot: Bot<BotContext>) {
   });
 
   bot.callbackQuery("water_reset", async (ctx) => {
+    await askConfirm(ctx, "🔄 <b>Скинути весь запис води за сьогодні?</b>", "water_reset");
+  });
+
+  bot.callbackQuery("cfm:water_reset", async (ctx) => {
     if (!ctx.from) return;
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     await resetWaterForDate(user.id);
     await ctx.answerCallbackQuery({ text: "День обнулено" });
+    try {
+      await ctx.deleteMessage();
+    } catch {
+      // ignore
+    }
     await addAndRefresh(ctx, 0);
   });
 
