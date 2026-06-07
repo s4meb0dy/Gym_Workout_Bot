@@ -9,6 +9,7 @@ export function classifyMuscleGroup(name: string, exerciseType?: string): string
   if (exerciseType === "warmup") return "Прес/Кор";
   if (n.includes("фермер") || n.includes("farmer")) return "Функціонал";
   if (n.includes("носки") || n.includes("calf")) return "Литки";
+  if (n.includes("ягодич") || n.includes("hip thrust") || n.includes("міст")) return "Сідниці";
   if (n.includes("румунськ")) return "Біцепс стегна";
   if (n.includes("розгинання ніг") || n.includes("leg extension")) return "Квадрицепс";
   if (n.includes("згинання ніг") || n.includes("leg curl")) return "Біцепс стегна";
