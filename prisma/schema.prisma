@@ -8,16 +8,37 @@ datasource db {
 }
 
 model User {
-  id            String           @id @default(cuid())
-  telegramId    BigInt           @unique
-  username      String?
-  firstName     String?
-  createdAt     DateTime         @default(now())
-  sessions      WorkoutSession[]
-  bodyWeights   BodyWeight[]
-  nutritionLogs NutritionLog[]
-  waterLogs     WaterLog[]
-  reminder      ReminderSetting?
+  id              String           @id @default(cuid())
+  telegramId      BigInt           @unique
+  username        String?
+  firstName       String?
+  healthSyncToken String?          @unique
+  createdAt       DateTime         @default(now())
+  sessions        WorkoutSession[]
+  bodyWeights     BodyWeight[]
+  nutritionLogs   NutritionLog[]
+  waterLogs       WaterLog[]
+  healthLogs      HealthLog[]
+  reminder        ReminderSetting?
+}
+
+model HealthLog {
+  id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  date           String // YYYY-MM-DD (local day)
+  sleepMinutes   Int?
+  restingHr      Int?
+  hrv            Float?
+  steps          Int?
+  activeCalories Int?
+  standHours     Int?
+  workoutMinutes Int?
+  source         String   @default("apple_watch")
+  recordedAt     DateTime @default(now())
+
+  @@unique([userId, date])
+  @@index([userId, date])
 }
 
 model WaterLog {

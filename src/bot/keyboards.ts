@@ -26,6 +26,8 @@ export function toolsKeyboard() {
     .row()
     .text("✏️ Редагувати програму", "tools_editprogram")
     .row()
+    .text("⌚ Apple Watch", "tools_health")
+    .row()
     .text("🔔 Нагадування", "tools_reminders")
     .row()
     .text("💾 Бекап БД", "tools_backup")

@@ -12,6 +12,7 @@ import { registerAnalyticsHandlers } from "./handlers/analytics";
 import { registerToolsHandlers } from "./handlers/tools";
 import { registerHistoryHandlers } from "./handlers/history";
 import { registerEditProgramHandlers } from "./handlers/editprogram";
+import { registerHealthHandlers } from "./handlers/health";
 import { registerConfirmHandlers } from "./confirm";
 import { mainMenuKeyboard } from "./keyboards";
 
@@ -91,6 +92,7 @@ export function createBot(): Bot<BotContext> {
   registerTrackingHandlers(bot);
   registerFoodHandlers(bot);
   registerWaterHandlers(bot);
+  registerHealthHandlers(bot);
   registerAnalyticsHandlers(bot);
   registerToolsHandlers(bot);
   registerHistoryHandlers(bot);
@@ -134,6 +136,7 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
     { command: "protein", description: "Додати білок за сьогодні" },
     { command: "water", description: "Трекінг води" },
     { command: "food", description: "КБЖВ за фото / підсумок дня" },
+    { command: "watch", description: "Apple Watch / поради здоров'я" },
     { command: "volume", description: "Обсяг по м'язах за тиждень" },
     { command: "progress", description: "Графік прогресу вправи" },
     { command: "history", description: "Історія тренувань" },

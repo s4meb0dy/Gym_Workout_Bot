@@ -1,5 +1,6 @@
 import { createBot, startBot } from "./bot/bot";
 import { createServer, startServer } from "./server/express";
+import { setHealthSyncBot } from "./server/health-sync";
 import { startScheduler } from "./scheduler/scheduler";
 import { startKeepAlive, stopKeepAlive } from "./server/keepalive";
 import { prisma } from "./db/client";
@@ -10,6 +11,7 @@ async function main() {
   startKeepAlive();
 
   const bot = createBot();
+  setHealthSyncBot(bot);
   startScheduler(bot);
 
   const shutdown = async (signal: string) => {

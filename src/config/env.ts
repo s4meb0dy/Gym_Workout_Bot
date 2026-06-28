@@ -43,3 +43,10 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash",
 };
+
+export function getPublicAppUrl(): string {
+  if (config.appUrl) {
+    return config.appUrl.replace(/\/$/, "");
+  }
+  return `http://localhost:${config.port}`;
+}
