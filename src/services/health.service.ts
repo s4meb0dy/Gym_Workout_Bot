@@ -19,6 +19,45 @@ export interface HealthMetrics {
   workoutMinutes?: number;
 }
 
+function sanitizeMetric(value: number | undefined, min: number, max: number): number | undefined {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  const rounded = Math.round(value);
+  if (rounded < min || rounded > max) return undefined;
+  return rounded;
+}
+
+function sanitizeFloat(value: number | undefined, min: number, max: number, decimals = 1): number | undefined {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  const factor = 10 ** decimals;
+  const fixed = Math.round(value * factor) / factor;
+  if (fixed < min || fixed > max) return undefined;
+  return fixed;
+}
+
+/** Shortcuts may send 45.7 as 457... when the decimal separator is dropped in JSON. */
+export function fixMangledDecimal(n: number, min: number, max: number): number | undefined {
+  if (n >= min && n <= max) return Math.round(n * 10) / 10;
+  for (let k = 1; k <= 15; k++) {
+    const v = n / 10 ** k;
+    if (v >= min && v <= max) return Math.round(v * 10) / 10;
+  }
+  return undefined;
+}
+
+/** Drops Shortcut/Health outliers (e.g. duration mistaken for kcal). */
+export function sanitizeHealthMetrics(metrics: HealthMetrics): HealthMetrics {
+  const hrvRaw = metrics.hrv != null ? fixMangledDecimal(metrics.hrv, 15, 120) : undefined;
+  return {
+    sleepMinutes: sanitizeMetric(metrics.sleepMinutes, 1, 1200),
+    restingHr: sanitizeMetric(metrics.restingHr, 30, 220),
+    hrv: sanitizeFloat(hrvRaw, 15, 120),
+    steps: sanitizeMetric(metrics.steps, 1, 150_000),
+    activeCalories: sanitizeMetric(metrics.activeCalories, 1, 10_000),
+    standHours: sanitizeMetric(metrics.standHours, 1, 24),
+    workoutMinutes: sanitizeMetric(metrics.workoutMinutes, 1, 1440),
+  };
+}
+
 export interface HealthContext {
   date: string;
   metrics: HealthMetrics;
@@ -149,14 +188,15 @@ export async function upsertHealthLog(
   metrics: HealthMetrics,
   source = "apple_watch",
 ) {
+  const m = sanitizeHealthMetrics(metrics);
   const data = {
-    sleepMinutes: metrics.sleepMinutes ?? null,
-    restingHr: metrics.restingHr ?? null,
-    hrv: metrics.hrv ?? null,
-    steps: metrics.steps ?? null,
-    activeCalories: metrics.activeCalories ?? null,
-    standHours: metrics.standHours ?? null,
-    workoutMinutes: metrics.workoutMinutes ?? null,
+    sleepMinutes: m.sleepMinutes ?? null,
+    restingHr: m.restingHr ?? null,
+    hrv: m.hrv ?? null,
+    steps: m.steps ?? null,
+    activeCalories: m.activeCalories ?? null,
+    standHours: m.standHours ?? null,
+    workoutMinutes: m.workoutMinutes ?? null,
     source,
     recordedAt: new Date(),
   };

@@ -8,6 +8,7 @@ import {
   buildHealthContext,
   findUserByHealthToken,
   formatHealthSummary,
+  sanitizeHealthMetrics,
   upsertHealthLog,
 } from "../services/health.service";
 import { localDateString } from "../services/tracking.service";
@@ -34,11 +35,11 @@ function parseSyncBody(body: Record<string, unknown>): {
   const num = (key: string) => {
     const v = body[key];
     if (v == null || v === "") return undefined;
-    const n = Number(v);
+    const n = Number(String(v).replace(",", "."));
     return Number.isFinite(n) ? n : undefined;
   };
 
-  const metrics: HealthMetrics = {
+  const metrics = sanitizeHealthMetrics({
     sleepMinutes: num("sleepMinutes"),
     restingHr: num("restingHr"),
     hrv: num("hrv"),
@@ -46,7 +47,7 @@ function parseSyncBody(body: Record<string, unknown>): {
     activeCalories: num("activeCalories"),
     standHours: num("standHours"),
     workoutMinutes: num("workoutMinutes"),
-  };
+  });
 
   const hasData = Object.values(metrics).some((v) => v != null && v > 0);
   if (!hasData) return null;
