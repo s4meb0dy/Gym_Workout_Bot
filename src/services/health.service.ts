@@ -44,6 +44,13 @@ export function fixMangledDecimal(n: number, min: number, max: number): number |
   return undefined;
 }
 
+function sanitizeActiveCalories(value: number | undefined): number | undefined {
+  if (value == null || !Number.isFinite(value)) return undefined;
+  const recovered = fixMangledDecimal(value, 10, 3500);
+  if (recovered != null) return Math.round(recovered);
+  return sanitizeMetric(value, 10, 3500);
+}
+
 /** Drops Shortcut/Health outliers (e.g. duration mistaken for kcal). */
 export function sanitizeHealthMetrics(metrics: HealthMetrics): HealthMetrics {
   const hrvRaw = metrics.hrv != null ? fixMangledDecimal(metrics.hrv, 15, 120) : undefined;
@@ -52,7 +59,7 @@ export function sanitizeHealthMetrics(metrics: HealthMetrics): HealthMetrics {
     restingHr: sanitizeMetric(metrics.restingHr, 30, 220),
     hrv: sanitizeFloat(hrvRaw, 15, 120),
     steps: sanitizeMetric(metrics.steps, 1, 150_000),
-    activeCalories: sanitizeMetric(metrics.activeCalories, 1, 10_000),
+    activeCalories: sanitizeActiveCalories(metrics.activeCalories),
     standHours: sanitizeMetric(metrics.standHours, 1, 24),
     workoutMinutes: sanitizeMetric(metrics.workoutMinutes, 1, 1440),
   };
