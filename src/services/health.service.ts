@@ -189,7 +189,11 @@ export async function upsertHealthLog(
   source = "apple_watch",
 ) {
   const m = sanitizeHealthMetrics(metrics);
-  const data = {
+  const recordedAt = new Date();
+
+  const createData = {
+    userId,
+    date,
     sleepMinutes: m.sleepMinutes ?? null,
     restingHr: m.restingHr ?? null,
     hrv: m.hrv ?? null,
@@ -198,13 +202,22 @@ export async function upsertHealthLog(
     standHours: m.standHours ?? null,
     workoutMinutes: m.workoutMinutes ?? null,
     source,
-    recordedAt: new Date(),
+    recordedAt,
   };
+
+  const updateData: Record<string, unknown> = { source, recordedAt };
+  if (m.sleepMinutes != null) updateData.sleepMinutes = m.sleepMinutes;
+  if (m.restingHr != null) updateData.restingHr = m.restingHr;
+  if (m.hrv != null) updateData.hrv = m.hrv;
+  if (m.steps != null) updateData.steps = m.steps;
+  if (m.activeCalories != null) updateData.activeCalories = m.activeCalories;
+  if (m.standHours != null) updateData.standHours = m.standHours;
+  if (m.workoutMinutes != null) updateData.workoutMinutes = m.workoutMinutes;
 
   return prisma.healthLog.upsert({
     where: { userId_date: { userId, date } },
-    update: data,
-    create: { userId, date, ...data },
+    update: updateData,
+    create: createData,
   });
 }
 

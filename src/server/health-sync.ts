@@ -32,21 +32,24 @@ function parseSyncBody(body: Record<string, unknown>): {
       ? body.date
       : localDateString();
 
-  const num = (key: string) => {
-    const v = body[key];
-    if (v == null || v === "") return undefined;
-    const n = Number(String(v).replace(",", "."));
-    return Number.isFinite(n) ? n : undefined;
+  const num = (...keys: string[]) => {
+    for (const key of keys) {
+      const v = body[key];
+      if (v == null || v === "") continue;
+      const n = Number(String(v).replace(",", "."));
+      if (Number.isFinite(n)) return n;
+    }
+    return undefined;
   };
 
   const metrics = sanitizeHealthMetrics({
-    sleepMinutes: num("sleepMinutes"),
-    restingHr: num("restingHr"),
-    hrv: num("hrv"),
-    steps: num("steps"),
-    activeCalories: num("activeCalories"),
-    standHours: num("standHours"),
-    workoutMinutes: num("workoutMinutes"),
+    sleepMinutes: num("sleepMinutes", "sleepMin"),
+    restingHr: num("restingHr", "restingHR", "RestingHR", "resting_hr"),
+    hrv: num("hrv", "HRV"),
+    steps: num("steps", "Steps"),
+    activeCalories: num("activeCalories", "activeCal", "ActiveCal", "active_calories"),
+    standHours: num("standHours", "stand_hours"),
+    workoutMinutes: num("workoutMinutes", "workout_minutes"),
   });
 
   const hasData = Object.values(metrics).some((v) => v != null && v > 0);
