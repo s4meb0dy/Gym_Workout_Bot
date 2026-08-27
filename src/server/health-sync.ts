@@ -19,6 +19,38 @@ export function setHealthSyncBot(bot: Bot<BotContext>): void {
   syncBot = bot;
 }
 
+function parseNumericValue(value: unknown): number | undefined {
+  if (value == null || value === "") return undefined;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "object" && value !== null && "value" in value) {
+    return parseNumericValue((value as { value: unknown }).value);
+  }
+  const cleaned = String(value).replace(",", ".").replace(/[^\d.-]/g, "");
+  if (!cleaned) return undefined;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : undefined;
+}
+
+function numFromBody(
+  body: Record<string, unknown>,
+  keys: string[],
+  mode: "first" | "sum" = "first",
+): number | undefined {
+  for (const key of keys) {
+    const value = body[key];
+    if (value == null || value === "") continue;
+    if (Array.isArray(value)) {
+      const nums = value.map(parseNumericValue).filter((n): n is number => n != null && n > 0);
+      if (nums.length === 0) continue;
+      return mode === "sum" ? nums.reduce((sum, n) => sum + n, 0) : nums[0];
+    }
+    const n = parseNumericValue(value);
+    // Shortcuts often sends 0 for an empty Number JSON field — try the next alias key.
+    if (n != null && n > 0) return n;
+  }
+  return undefined;
+}
+
 function parseSyncBody(body: Record<string, unknown>): {
   token: string;
   date: string;
@@ -32,24 +64,18 @@ function parseSyncBody(body: Record<string, unknown>): {
       ? body.date
       : localDateString();
 
-  const num = (...keys: string[]) => {
-    for (const key of keys) {
-      const v = body[key];
-      if (v == null || v === "") continue;
-      const n = Number(String(v).replace(",", "."));
-      if (Number.isFinite(n)) return n;
-    }
-    return undefined;
-  };
-
   const metrics = sanitizeHealthMetrics({
-    sleepMinutes: num("sleepMinutes", "sleepMin"),
-    restingHr: num("restingHr", "restingHR", "RestingHR", "resting_hr"),
-    hrv: num("hrv", "HRV"),
-    steps: num("steps", "Steps"),
-    activeCalories: num("activeCalories", "activeCal", "ActiveCal", "active_calories"),
-    standHours: num("standHours", "stand_hours"),
-    workoutMinutes: num("workoutMinutes", "workout_minutes"),
+    sleepMinutes: numFromBody(body, ["sleepMinutes", "sleepMin"]),
+    restingHr: numFromBody(body, ["restingHr", "restingHR", "RestingHR", "resting_hr"]),
+    hrv: numFromBody(body, ["hrv", "HRV"]),
+    steps: numFromBody(body, ["steps", "Steps"]),
+    activeCalories: numFromBody(
+      body,
+      ["activeCalories", "activeCal", "ActiveCal", "active_calories"],
+      "sum",
+    ),
+    standHours: numFromBody(body, ["standHours", "stand_hours"]),
+    workoutMinutes: numFromBody(body, ["workoutMinutes", "workout_minutes"]),
   });
 
   const hasData = Object.values(metrics).some((v) => v != null && v > 0);
@@ -65,6 +91,15 @@ export function registerHealthSyncRoutes(app: express.Application): void {
       if (!parsed) {
         res.status(400).json({ ok: false, error: "Invalid payload" });
         return;
+      }
+
+      const body = req.body as Record<string, unknown>;
+      const rawActive = body.activeCalories ?? body.activeCal ?? body.ActiveCal;
+      if (rawActive != null && rawActive !== "" && parsed.metrics.activeCalories == null) {
+        console.warn("Health sync: activeCalories rejected", {
+          raw: rawActive,
+          keys: Object.keys(body).filter((k) => k !== "token"),
+        });
       }
 
       const user = await findUserByHealthToken(parsed.token);
