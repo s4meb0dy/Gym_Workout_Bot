@@ -19,6 +19,7 @@ export interface ExerciseBaseline {
 export interface ProgressionResult {
   lastWeight: number;
   lastReps: number;
+  lastSets: SetResult[];
   suggestedWeight: number;
   shouldIncreaseWeight: boolean;
   message: string;
@@ -27,7 +28,7 @@ export interface ProgressionResult {
 export const MANUAL_WEIGHT_HINT =
   "\n\n✏️ <i>Можеш ввести будь-яку фактичну вагу — якщо в залі немає рекомендованого номіналу, просто запиши те, що взяли.</i>";
 
-function getBaselineWeight(baseline: ExerciseBaseline): number {
+export function getBaselineWeight(baseline: ExerciseBaseline): number {
   if (baseline.baselineWeightMin != null && baseline.baselineWeightMax != null) {
     if (baseline.baselineWeightMin === baseline.baselineWeightMax) {
       return baseline.baselineWeightMin;
@@ -43,7 +44,7 @@ function getBaselineWeight(baseline: ExerciseBaseline): number {
   return 0;
 }
 
-function formatRepTarget(min: number, max: number, exerciseType: ExerciseType): string {
+export function formatRepTarget(min: number, max: number, exerciseType: ExerciseType): string {
   if (exerciseType === "warmup") {
     return `${max} повторень (без ваги)`;
   }
@@ -84,6 +85,7 @@ function buildFirstWorkoutMessage(
     return {
       lastWeight: 0,
       lastReps: 0,
+      lastSets: [],
       suggestedWeight,
       shouldIncreaseWeight: false,
       message:
@@ -103,6 +105,7 @@ function buildFirstWorkoutMessage(
   return {
     lastWeight: 0,
     lastReps: 0,
+    lastSets: [],
     suggestedWeight: 0,
     shouldIncreaseWeight: false,
     message: `Перше тренування цієї вправи.\nЦіль: ${repTarget}.\n${inputHint}${MANUAL_WEIGHT_HINT}`,
@@ -114,7 +117,6 @@ export function calculateProgression(
   targetSets: number,
   targetRepsMin: number,
   targetRepsMax: number,
-  _bodyPart: BodyPart,
   baseline: ExerciseBaseline = {},
 ): ProgressionResult {
   const exerciseType = baseline.exerciseType ?? "reps";
@@ -128,14 +130,25 @@ export function calculateProgression(
     return buildFirstWorkoutMessage(baseline, targetRepsMin, targetRepsMax, exerciseType);
   }
 
+  // Підходи вже відсортовані за setNumber ASC; беремо робочі (не більше targetSets).
   const workingSets = lastSets.slice(0, targetSets);
-  const lastSet = workingSets[workingSets.length - 1];
-  const lastWeight = lastSet.weight;
+  const lastSet = workingSets[workingSets.length - 1]!;
   const lastReps = lastSet.reps;
 
-  const allSetsCompleted = workingSets.length >= targetSets;
+  // Робоча вага для прогресії — найважчий підхід (не останній, якщо там backoff).
+  const referenceWeight =
+    progressionMode === "assist"
+      ? Math.min(...workingSets.map((set) => set.weight))
+      : Math.max(...workingSets.map((set) => set.weight));
+  const lastWeight = referenceWeight;
+
+  const topSets =
+    progressionMode === "assist"
+      ? workingSets.filter((set) => set.weight <= referenceWeight + 0.01)
+      : workingSets.filter((set) => set.weight >= referenceWeight - 0.01);
+
   const allHitMax =
-    allSetsCompleted && workingSets.every((set) => set.reps >= targetRepsMax);
+    topSets.length >= targetSets && topSets.every((set) => set.reps >= targetRepsMax);
 
   if (allHitMax) {
     if (progressionMode === "assist") {
@@ -143,6 +156,7 @@ export function calculateProgression(
       return {
         lastWeight,
         lastReps,
+        lastSets: workingSets,
         suggestedWeight,
         shouldIncreaseWeight: true,
         message:
@@ -156,6 +170,7 @@ export function calculateProgression(
     return {
       lastWeight,
       lastReps,
+      lastSets: workingSets,
       suggestedWeight,
       shouldIncreaseWeight: true,
       message:
@@ -168,6 +183,7 @@ export function calculateProgression(
   return {
     lastWeight,
     lastReps,
+    lastSets: workingSets,
     suggestedWeight: lastWeight,
     shouldIncreaseWeight: false,
     message:
@@ -187,35 +203,56 @@ export interface ParsedSet {
 export function parseSetInput(
   text: string,
   exerciseType: ExerciseType = "reps",
+  fallbackWeight?: number,
 ): ParsedSet | null {
-  const normalized = text.trim().replace(/,/g, ".").replace(/[хХ×]/g, "x");
-  const match = normalized.match(/^(\d+(?:\.\d+)?)\s*[xX]\s*(\d+)(.*)$/);
-
-  if (!match) {
-    return null;
-  }
-
-  const weight = parseFloat(match[1]);
-  const reps = parseInt(match[2], 10);
   const maxReps = exerciseType === "time" ? 600 : 100;
+  let rest = text.trim().replace(/,/g, ".").replace(/[хХxX×*]/g, " ");
 
-  if (weight <= 0 || reps <= 0 || reps > maxReps) {
-    return null;
-  }
-
-  let rest = (match[3] ?? "").trim();
   let rpe: number | undefined;
-
   const rpeMatch = rest.match(/@\s*(\d+(?:\.\d+)?)/);
   if (rpeMatch) {
     const value = parseFloat(rpeMatch[1]);
     if (value > 0 && value <= 10) {
       rpe = value;
     }
-    rest = rest.replace(rpeMatch[0], "").trim();
+    rest = rest.replace(rpeMatch[0], " ").trim();
   }
 
-  const note = rest.length > 0 ? rest.slice(0, 200) : undefined;
+  const nums = rest.match(/\d+(?:\.\d+)?/g) ?? [];
+  const note =
+    rest
+      .replace(/\d+(?:\.\d+)?/g, " ")
+      .trim()
+      .slice(0, 200) || undefined;
+
+  let weight: number;
+  let reps: number;
+
+  if (nums.length >= 2) {
+    const w = nums[0];
+    const r = nums[1];
+    if (!w || !r) {
+      return null;
+    }
+    weight = parseFloat(w);
+    reps = parseInt(r, 10);
+  } else if (nums.length === 1 && fallbackWeight != null && fallbackWeight > 0) {
+    const r = nums[0];
+    if (!r) {
+      return null;
+    }
+    reps = parseInt(r, 10);
+    if (exerciseType !== "time" && reps > 50) {
+      return null;
+    }
+    weight = fallbackWeight;
+  } else {
+    return null;
+  }
+
+  if (weight <= 0 || reps <= 0 || reps > maxReps) {
+    return null;
+  }
 
   return { weight, reps, rpe, note };
 }
@@ -226,14 +263,6 @@ export function formatWeight(weight: number): string {
 
 export function calculateTonnage(sets: SetResult[]): number {
   return sets.reduce((total, set) => total + set.weight * set.reps, 0);
-}
-
-export function formatExerciseTarget(
-  targetRepsMin: number,
-  targetRepsMax: number,
-  exerciseType: ExerciseType,
-): string {
-  return formatRepTarget(targetRepsMin, targetRepsMax, exerciseType);
 }
 
 export function isWarmupExercise(exercise: { exerciseType: string }): boolean {
@@ -256,8 +285,12 @@ export function formatWarmupPrompt(
   const progressLine =
     exerciseIndex && totalExercises ? `📍 Вправа ${exerciseIndex}/${totalExercises}\n` : "";
 
+  const header = exercise.block.toLowerCase().includes("розминка")
+    ? "🔥 <b>Розминка</b>"
+    : `🧱 <b>Без ваги</b>\n📦 ${exercise.block}`;
+
   let text =
-    `${progressLine}🔥 <b>Розминка</b>\n📦 ${exercise.block}\n\n` +
+    `${progressLine}${header}\n\n` +
     `<b>${exercise.name}</b>\n` +
     `Підхід ${setNumber}/${exercise.targetSets} • ${exercise.targetRepsMax} повторень\n`;
 
@@ -271,15 +304,9 @@ export function formatWarmupPrompt(
 }
 
 export function formatRestDuration(seconds: number): string {
-  if (seconds >= 120 && seconds % 60 === 0) {
+  if (seconds >= 60) {
     const minutes = seconds / 60;
     return `${seconds} сек (${minutes} хв)`;
-  }
-  if (seconds === 90) {
-    return "90 сек (1.5 хв)";
-  }
-  if (seconds >= 60 && seconds % 60 === 0) {
-    return `${seconds} сек (${seconds / 60} хв)`;
   }
   return `${seconds} сек`;
 }

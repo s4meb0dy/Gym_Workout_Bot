@@ -1,4 +1,5 @@
 import { Bot, Context, session, SessionFlavor } from "grammy";
+import { User } from "@prisma/client";
 import { config } from "../config/env";
 import { findOrCreateUser } from "../services/workout.service";
 import { registerMenuHandlers } from "./handlers/menu";
@@ -37,11 +38,20 @@ export interface SessionData {
   editingSetId?: string | null;
   editEntryId?: string | null;
   quickWeight?: number | null;
+  quickReps?: number | null;
+  cardMessageId?: number | null;
+  cardExerciseId?: number | null;
+  postponedExerciseIds?: number[];
+  skippedExerciseIds?: number[];
   editProgram?: { mode: "rename" | "add"; dayNumber: number; exerciseId?: number } | null;
   pendingFood?: PendingFood | null;
 }
 
-export type BotContext = Context & SessionFlavor<SessionData>;
+export interface UserFlavor {
+  user: User;
+}
+
+export type BotContext = Context & SessionFlavor<SessionData> & UserFlavor;
 
 export function createBot(): Bot<BotContext> {
   const bot = new Bot<BotContext>(config.botToken);
@@ -54,6 +64,11 @@ export function createBot(): Bot<BotContext> {
         editingSetId: null,
         editEntryId: null,
         quickWeight: null,
+        quickReps: null,
+        cardMessageId: null,
+        cardExerciseId: null,
+        postponedExerciseIds: [],
+        skippedExerciseIds: [],
         editProgram: null,
         pendingFood: null,
       }),
@@ -65,7 +80,7 @@ export function createBot(): Bot<BotContext> {
       return;
     }
 
-    await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    ctx.user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     await next();
   });
 
@@ -74,10 +89,9 @@ export function createBot(): Bot<BotContext> {
     ctx.session.awaitingInput = null;
     ctx.session.editingSetId = null;
 
-    if (ctx.from && ctx.chat) {
-      const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    if (ctx.chat) {
       const { upsertReminderSetting } = await import("../services/tracking.service");
-      await upsertReminderSetting(user.id, ctx.chat.id);
+      await upsertReminderSetting(ctx.user.id, ctx.chat.id);
     }
 
     await ctx.reply(

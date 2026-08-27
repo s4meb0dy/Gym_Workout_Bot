@@ -4,8 +4,6 @@ import { classifyMuscleGroup } from "./muscle";
 import {
   calculateProgression,
   calculateTonnage,
-  formatExerciseTarget,
-  formatRestDuration,
   formatWeight,
   isWarmupExercise,
   ProgressionResult,
@@ -143,7 +141,7 @@ export async function getActiveSession(userId: string) {
       workoutDay: {
         include: { exercises: { orderBy: { orderIndex: "asc" } } },
       },
-      sets: { orderBy: { createdAt: "asc" } },
+      sets: { orderBy: [{ setNumber: "asc" }, { createdAt: "asc" }] },
     },
     orderBy: { startedAt: "desc" },
   });
@@ -184,7 +182,9 @@ export async function getLastCompletedSession(userId: string, workoutDayId: numb
       completedAt: { not: null },
     },
     orderBy: { completedAt: "desc" },
-    include: { sets: true },
+    include: {
+      sets: { orderBy: [{ setNumber: "asc" }, { createdAt: "asc" }] },
+    },
   });
 }
 
@@ -200,7 +200,7 @@ export async function getExerciseHistorySets(
 
   return lastSession.sets
     .filter((set) => set.exerciseId === exerciseId && set.weight > 0 && set.reps > 0)
-    .sort((a, b) => a.setNumber - b.setNumber)
+    .sort((a, b) => a.setNumber - b.setNumber || a.createdAt.getTime() - b.createdAt.getTime())
     .map((set) => ({ weight: set.weight, reps: set.reps }));
 }
 
@@ -213,6 +213,7 @@ export async function getProgressionForExercise(
     return {
       lastWeight: 0,
       lastReps: 0,
+      lastSets: [],
       suggestedWeight: 0,
       shouldIncreaseWeight: false,
       message: "",
@@ -220,21 +221,29 @@ export async function getProgressionForExercise(
   }
 
   const lastSets = await getExerciseHistorySets(userId, workoutDayId, exercise.id);
-  return calculateProgression(
-    lastSets,
-    exercise.targetSets,
-    exercise.targetRepsMin,
-    exercise.targetRepsMax,
-    exercise.bodyPart as "upper" | "lower",
-    {
-      baselineWeightMin: exercise.baselineWeightMin,
-      baselineWeightMax: exercise.baselineWeightMax,
-      baselineNote: exercise.baselineNote,
-      progressionMode: exercise.progressionMode as "weight" | "assist",
-      progressionStep: exercise.progressionStep,
-      exerciseType: exercise.exerciseType as "reps" | "time",
-    },
-  );
+  return calculateProgression(lastSets, exercise.targetSets, exercise.targetRepsMin, exercise.targetRepsMax, {
+    baselineWeightMin: exercise.baselineWeightMin,
+    baselineWeightMax: exercise.baselineWeightMax,
+    baselineNote: exercise.baselineNote,
+    progressionMode: exercise.progressionMode as "weight" | "assist",
+    progressionStep: exercise.progressionStep,
+    exerciseType: exercise.exerciseType as "reps" | "time",
+  });
+}
+
+/** Робочі підходи вправи в поточній сесії, відсортовані за setNumber. */
+export function getTodayExerciseSets(
+  sets: Array<{ exerciseId: number; setNumber: number; weight: number; reps: number; createdAt?: Date }>,
+  exerciseId: number,
+): SetResult[] {
+  return sets
+    .filter((set) => set.exerciseId === exerciseId && set.weight > 0 && set.reps > 0)
+    .sort(
+      (a, b) =>
+        a.setNumber - b.setNumber ||
+        (a.createdAt?.getTime() ?? 0) - (b.createdAt?.getTime() ?? 0),
+    )
+    .map((set) => ({ weight: set.weight, reps: set.reps }));
 }
 
 export interface ExerciseState {
@@ -244,25 +253,77 @@ export interface ExerciseState {
   totalExercises: number;
 }
 
+/** Черга вправ у межах однієї сесії (відкладені / пропущені без 0×0). */
+export interface WorkoutQueueOptions {
+  postponedExerciseIds?: number[];
+  skippedExerciseIds?: number[];
+}
+
+function isExerciseCompleteInSession(
+  exercise: Exercise,
+  sets: Array<{ exerciseId: number }>,
+  skippedExerciseIds: number[],
+): boolean {
+  if (skippedExerciseIds.includes(exercise.id)) {
+    return true;
+  }
+  const loggedSets = sets.filter((set) => set.exerciseId === exercise.id);
+  return loggedSets.length >= exercise.targetSets;
+}
+
+/**
+ * targetSets = 0 означає вилучену з програми вправу: рядок лишається в БД, щоб
+ * не втратити історію підходів, але в тренуванні вона не бере участі.
+ */
+export function isArchivedExercise(exercise: Pick<Exercise, "targetSets">): boolean {
+  return exercise.targetSets <= 0;
+}
+
+/** Активні вправи в оригінальному порядку, потім відкладені (у порядку відкладання). */
+export function getExerciseQueue(
+  exercises: Exercise[],
+  postponedExerciseIds: number[],
+): Exercise[] {
+  const available = exercises.filter((exercise) => !isArchivedExercise(exercise));
+  const postponedSet = new Set(postponedExerciseIds);
+  const active = available.filter((exercise) => !postponedSet.has(exercise.id));
+  const postponed = postponedExerciseIds
+    .map((id) => available.find((exercise) => exercise.id === id))
+    .filter((exercise): exercise is Exercise => exercise != null);
+
+  return [...active, ...postponed];
+}
+
 export function getCurrentExerciseState(
   session: WorkoutSession & {
     workoutDay: { exercises: Exercise[] };
     sets: Array<{ exerciseId: number }>;
   },
+  queue: WorkoutQueueOptions = {},
 ): ExerciseState | null {
-  const exercises = session.workoutDay.exercises;
-  for (let i = 0; i < exercises.length; i++) {
-    const exercise = exercises[i];
-    const loggedSets = session.sets.filter((set) => set.exerciseId === exercise.id);
-    if (loggedSets.length < exercise.targetSets) {
-      return {
-        exercise,
-        setNumber: loggedSets.length + 1,
-        exerciseIndex: i + 1,
-        totalExercises: exercises.length,
-      };
+  const postponedExerciseIds = queue.postponedExerciseIds ?? [];
+  const skippedExerciseIds = queue.skippedExerciseIds ?? [];
+  const activeExercises = session.workoutDay.exercises.filter(
+    (exercise) => !isArchivedExercise(exercise),
+  );
+  const exercises = getExerciseQueue(session.workoutDay.exercises, postponedExerciseIds);
+
+  for (const exercise of exercises) {
+    if (isExerciseCompleteInSession(exercise, session.sets, skippedExerciseIds)) {
+      continue;
     }
+
+    const loggedSets = session.sets.filter((set) => set.exerciseId === exercise.id);
+    const originalIndex = activeExercises.findIndex((item) => item.id === exercise.id) + 1;
+
+    return {
+      exercise,
+      setNumber: loggedSets.length + 1,
+      exerciseIndex: originalIndex,
+      totalExercises: activeExercises.length,
+    };
   }
+
   return null;
 }
 
@@ -271,8 +332,9 @@ export function isWorkoutComplete(
     workoutDay: { exercises: Exercise[] };
     sets: Array<{ exerciseId: number }>;
   },
+  queue: WorkoutQueueOptions = {},
 ): boolean {
-  return getCurrentExerciseState(session) === null;
+  return getCurrentExerciseState(session, queue) === null;
 }
 
 export async function logSet(
@@ -333,7 +395,7 @@ export async function reloadSession(sessionId: string) {
       workoutDay: {
         include: { exercises: { orderBy: { orderIndex: "asc" } } },
       },
-      sets: { orderBy: { createdAt: "asc" } },
+      sets: { orderBy: [{ setNumber: "asc" }, { createdAt: "asc" }] },
     },
   });
 }
@@ -466,40 +528,6 @@ export async function getUserStats(userId: string) {
   });
 
   return { totalWorkouts, totalSets, totalTonnage, records, recentSessions };
-}
-
-export function formatExercisePrompt(
-  exercise: Exercise,
-  setNumber: number,
-  progression: ProgressionResult,
-  exerciseIndex?: number,
-  totalExercises?: number,
-): string {
-  const exerciseType = exercise.exerciseType as "reps" | "time";
-  const repTarget = formatExerciseTarget(
-    exercise.targetRepsMin,
-    exercise.targetRepsMax,
-    exerciseType,
-  );
-
-  const progressLine =
-    exerciseIndex && totalExercises ? `📍 Вправа ${exerciseIndex}/${totalExercises}\n` : "";
-  const header = `${progressLine}🏋️ <b>${exercise.name}</b>\n📦 ${exercise.block}\n`;
-  const targets =
-    `Підхід ${setNumber}/${exercise.targetSets} • Ціль: ${repTarget}\n` +
-    `⏱️ Відпочинок між підходами: ${formatRestDuration(exercise.restTimeInSeconds)}\n`;
-
-  let technique = "";
-  if (exercise.technique) {
-    technique = `\n💡 ${exercise.technique}\n`;
-  }
-
-  const hint =
-    exerciseType === "time"
-      ? `\n\nВведи результат: <code>вага x секунди</code>\nНаприклад: <code>20x45</code>`
-      : `\n\nВведи результат: <code>вага x повторення</code>\nНаприклад: <code>14x10</code>`;
-
-  return header + targets + technique + "\n" + progression.message + hint;
 }
 
 export function formatWorkoutSummary(summary: WorkoutSummary): string {

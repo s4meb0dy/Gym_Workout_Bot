@@ -5,8 +5,9 @@ import {
   editExerciseKeyboard,
   editProgramDayKeyboard,
   editProgramExerciseListKeyboard,
+  isMainMenuButton,
 } from "../keyboards";
-import { formatExerciseTarget, formatRestDuration } from "../../services/progression";
+import { formatRepTarget, formatRestDuration } from "../../services/progression";
 import {
   addExerciseToDay,
   deleteExercise,
@@ -19,15 +20,6 @@ import {
   renameExercise,
   updateExerciseTargets,
 } from "../../services/workout.service";
-
-const MENU_BUTTONS = [
-  "🏋️ Розпочати тренування",
-  "📋 Моя програма (4 дні)",
-  "📊 Статистика та рекорди",
-  "⚖️ Вага тіла",
-  "🍗 Білок",
-  "🛠 Інструменти",
-];
 
 async function showDayPicker(ctx: BotContext) {
   const days = await getWorkoutDays();
@@ -76,7 +68,7 @@ async function showExerciseEditor(ctx: BotContext, exerciseId: number) {
   const day = await getWorkoutDayById(exercise.workoutDayId);
   const hasHistory = await exerciseHasHistory(exerciseId);
 
-  const repTarget = formatExerciseTarget(
+  const repTarget = formatRepTarget(
     exercise.targetRepsMin,
     exercise.targetRepsMax,
     exercise.exerciseType as "reps" | "time" | "warmup",
@@ -269,7 +261,7 @@ export function registerEditProgramHandlers(bot: Bot<BotContext>) {
     }
 
     const text = ctx.message.text;
-    if (MENU_BUTTONS.includes(text)) {
+    if (isMainMenuButton(text)) {
       ctx.session.editProgram = null;
       return next();
     }

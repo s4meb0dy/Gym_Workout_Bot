@@ -12,6 +12,8 @@
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",
     "db:reseed": "tsx prisma/seed.ts --force",
+    "db:migrate-v8": "tsx prisma/migrate-program-v8.ts",
+    "db:migrate-v8:dry": "tsx prisma/migrate-program-v8.ts --dry",
     "db:setup": "prisma migrate deploy && tsx prisma/seed.ts"
   },
   "keywords": [

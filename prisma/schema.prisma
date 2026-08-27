@@ -87,7 +87,7 @@ model ReminderSetting {
   workoutHour        Int     @default(10)
   proteinHour        Int     @default(20)
   proteinTarget      Int     @default(150)
-  calorieTarget      Int     @default(2000)
+  calorieTarget      Int     @default(2300)
   backupEnabled      Boolean @default(true)
   digestEnabled      Boolean @default(true)
   supplementsEnabled Boolean @default(true)

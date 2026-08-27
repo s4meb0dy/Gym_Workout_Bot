@@ -21,7 +21,8 @@ const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
 const BACKUP_HOUR = 3;
 const DIGEST_WEEKDAY = "Sun";
 const DIGEST_HOUR = 19;
-const WATER_REMINDER_HOURS = [12, 16, 20];
+// Every 2 hours from 09:00 through 00:00 (local timezone)
+const WATER_REMINDER_HOURS = [9, 11, 13, 15, 17, 19, 21, 23, 0];
 
 function formatMlShort(ml: number): string {
   return ml >= 1000 ? `${(ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1)} л` : `${ml} мл`;

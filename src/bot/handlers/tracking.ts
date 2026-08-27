@@ -5,6 +5,7 @@ import {
   backToMenuKeyboard,
   bodyWeightEntryKeyboard,
   bodyWeightListKeyboard,
+  isMainMenuButton,
   reminderSettingsKeyboard,
   toolsKeyboard,
 } from "../keyboards";
@@ -278,6 +279,23 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
   bot.callbackQuery("rem_protein_minus", (ctx) => adjustProteinTarget(ctx, -10));
   bot.callbackQuery("rem_protein_plus", (ctx) => adjustProteinTarget(ctx, 10));
 
+  const adjustCalorieTarget = async (ctx: BotContext, delta: number) => {
+    if (!ctx.from || !ctx.chat) return;
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const current = await getReminderSetting(user.id);
+    const target = Math.max(1200, Math.min(5000, (current?.calorieTarget ?? 2300) + delta));
+    const updated = await upsertReminderSetting(user.id, ctx.chat.id, { calorieTarget: target });
+    await ctx.answerCallbackQuery({ text: `Ціль: ${target} ккал` });
+    try {
+      await ctx.editMessageReplyMarkup({ reply_markup: reminderSettingsKeyboard(updated) });
+    } catch {
+      // ignore
+    }
+  };
+
+  bot.callbackQuery("rem_calorie_minus", (ctx) => adjustCalorieTarget(ctx, -50));
+  bot.callbackQuery("rem_calorie_plus", (ctx) => adjustCalorieTarget(ctx, 50));
+
   const adjustWaterTarget = async (ctx: BotContext, delta: number) => {
     if (!ctx.from || !ctx.chat) return;
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
@@ -359,16 +377,7 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
       return next();
     }
 
-    const menuButtons = [
-      "🏋️ Розпочати тренування",
-      "📋 Моя програма (4 дні)",
-      "📊 Статистика та рекорди",
-      "⚖️ Вага тіла",
-      "🍗 Білок",
-      "💧 Вода",
-      "🛠 Інструменти",
-    ];
-    if (menuButtons.includes(ctx.message.text)) {
+    if (isMainMenuButton(ctx.message.text)) {
       ctx.session.awaitingInput = null;
       return next();
     }

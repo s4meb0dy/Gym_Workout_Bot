@@ -1,6 +1,17 @@
 import { InlineKeyboard, Keyboard } from "grammy";
 import { formatWeight } from "../services/progression";
 
+/** Єдине джерело правди для кнопок головного меню (reply-клавіатура + роутинг тексту). */
+export const MAIN_MENU_BUTTONS = [
+  "🏋️ Розпочати тренування",
+  "📋 Моя програма (4 дні)",
+  "📊 Статистика та рекорди",
+  "⚖️ Вага тіла",
+  "🍗 Білок",
+  "💧 Вода",
+  "🛠 Інструменти",
+] as const;
+
 export const mainMenuKeyboard = new Keyboard()
   .text("🏋️ Розпочати тренування")
   .row()
@@ -14,6 +25,10 @@ export const mainMenuKeyboard = new Keyboard()
   .text("🛠 Інструменти")
   .resized()
   .persistent();
+
+export function isMainMenuButton(text: string): boolean {
+  return (MAIN_MENU_BUTTONS as readonly string[]).includes(text);
+}
 
 export function toolsKeyboard() {
   return new InlineKeyboard()
@@ -67,40 +82,42 @@ export function warmupSetKeyboard() {
   return new InlineKeyboard()
     .text("✅ Підхід виконано", "warmup_set_done")
     .row()
-    .text("↩️ Скасувати підхід", "undo_set")
-    .row()
-    .text("⏭️ Пропустити вправу", "skip_to_next")
-    .row()
-    .text("✅ Фініш", "finish_workout")
-    .text("❌ Скасувати тренування", "cancel_workout");
+    .text("⚙️ Меню / Ще", "qw_more");
 }
 
-export function workoutControlKeyboard() {
-  return new InlineKeyboard()
-    .text("↩️ Скасувати підхід", "undo_set")
-    .row()
-    .text("✏️ Виправити підхід", "edit_menu")
-    .text("⏭️ Пропустити вправу", "skip_to_next")
-    .row()
-    .text("✅ Фініш", "finish_workout")
-    .text("❌ Скасувати тренування", "cancel_workout");
-}
-
-export function quickWeightKeyboard(candidate: number, step: number, repsMax: number) {
+/**
+ * Компактна клавіатура підходу: вага та повторення коригуються з одного екрана,
+ * рідкісні дії сховані за «⚙️ Меню / Ще», щоб не тицяти мокрими руками у «Скасувати».
+ */
+export function setEntryKeyboard(weight: number, reps: number, step: number) {
   return new InlineKeyboard()
     .text(`➖ ${formatWeight(step)}`, "qw_dec")
-    .text(`${formatWeight(candidate)} кг`, "qw_noop")
+    .text(`${formatWeight(weight)} кг`, "qw_noop")
     .text(`➕ ${formatWeight(step)}`, "qw_inc")
     .row()
-    .text(`✅ Записати ${formatWeight(candidate)} × ${repsMax}`, "qw_log")
+    .text("➖ 1", "qr_dec")
+    .text(`${reps} повт.`, "qw_noop")
+    .text("➕ 1", "qr_inc")
     .row()
+    .text(`✅ Записати ${formatWeight(weight)} × ${reps}`, "qw_log")
+    .row()
+    .text("⚙️ Меню / Ще", "qw_more");
+}
+
+export function workoutMoreKeyboard() {
+  return new InlineKeyboard()
     .text("↩️ Скасувати підхід", "undo_set")
-    .row()
     .text("✏️ Виправити підхід", "edit_menu")
-    .text("⏭️ Пропустити вправу", "skip_to_next")
     .row()
-    .text("✅ Фініш", "finish_workout")
-    .text("❌ Скасувати тренування", "cancel_workout");
+    .text("⏸️ Відкласти вправу", "act:postpone_exercise")
+    .row()
+    .text("⏭️ Пропустити зовсім", "skip_to_next")
+    .row()
+    .text("✅ Фініш тренування", "finish_workout")
+    .row()
+    .text("❌ Скасувати тренування", "cancel_workout")
+    .row()
+    .text("⬅️ Назад до підходу", "qw_back");
 }
 
 export function editSetListKeyboard(sets: Array<{ id: string; label: string }>) {
@@ -127,6 +144,7 @@ export function reminderSettingsKeyboard(setting: {
   proteinHour: number;
   supplementsHour: number;
   proteinTarget: number;
+  calorieTarget: number;
   waterTargetMl: number;
 }) {
   const waterLiters = (setting.waterTargetMl / 1000).toFixed(setting.waterTargetMl % 1000 === 0 ? 0 : 1);
@@ -146,7 +164,7 @@ export function reminderSettingsKeyboard(setting: {
       "rem_toggle_supplements",
     )
     .row()
-    .text(`${setting.waterEnabled ? "✅" : "⬜"} Нагадування про воду (12/16/20:00)`, "rem_toggle_water")
+    .text(`${setting.waterEnabled ? "✅" : "⬜"} Вода кожні 2 год (9:00–00:00)`, "rem_toggle_water")
     .row()
     .text(`${setting.digestEnabled ? "✅" : "⬜"} Тижневий підсумок (Нд 19:00)`, "rem_toggle_digest")
     .row()
@@ -155,6 +173,10 @@ export function reminderSettingsKeyboard(setting: {
     .text("🍗 Ціль білка: −10", "rem_protein_minus")
     .text(`${setting.proteinTarget} г`, "rem_noop")
     .text("+10", "rem_protein_plus")
+    .row()
+    .text("🔥 Ціль калорій: −50", "rem_calorie_minus")
+    .text(`${setting.calorieTarget} ккал`, "rem_noop")
+    .text("+50", "rem_calorie_plus")
     .row()
     .text("💧 Ціль води: −250", "rem_water_minus")
     .text(`${waterLiters} л`, "rem_noop")

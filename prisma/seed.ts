@@ -1,4 +1,5 @@
 import { prisma } from "../src/db/client";
+import { migrateProgramToV8 } from "./migrate-program-v8";
 import { classifyMuscleGroup, PROGRAM_VERSION, workoutProgram } from "./workout-program";
 
 async function clearProgramData() {
@@ -51,17 +52,18 @@ async function isProgramUpToDate(): Promise<boolean> {
     return false;
   }
 
-  const firstExercise = firstDay.exercises[0];
+  // targetSets = 0 — архівні вправи (вилучені з програми, але з історією підходів).
+  const active = firstDay.exercises.filter((e) => e.targetSets > 0);
   const isUpperLowerSplit = firstDay.name.includes("Верх");
-  const hasMuscleGroups = firstDay.exercises.some(
-    (e) => e.muscleGroup && e.muscleGroup !== "Інше",
-  );
+  const hasMuscleGroups = active.some((e) => e.muscleGroup && e.muscleGroup !== "Інше");
+  // З v8 прес більше не стоїть першим — перший рух дня має бути робочим.
+  const coreMovedToEnd = active[0]?.exerciseType !== "warmup";
 
   return (
-    firstExercise?.exerciseType === "warmup" &&
     isUpperLowerSplit &&
     hasMuscleGroups &&
-    firstDay.exercises.length === workoutProgram[0].exercises.length
+    coreMovedToEnd &&
+    active.length === workoutProgram[0].exercises.length
   );
 }
 
@@ -82,15 +84,16 @@ async function main() {
     return;
   }
 
-  // Програму більше НЕ перезаписуємо автоматично: користувач може редагувати її
-  // через бота, тому авто-перезапис стер би його зміни. Для примусового
-  // оновлення з коду використовуй `npm run db:reseed` (--force).
-  const upToDate = await isProgramUpToDate();
-  console.log(
-    upToDate
-      ? `Workout program present (v${PROGRAM_VERSION}). Skipping seed.`
-      : "Existing program detected (possibly customized). Skipping auto-update. Use db:reseed to force.",
-  );
+  // Повний перезасів стер би історію підходів, тому стару програму оновлюємо
+  // неруйнівною міграцією: вправи переставляються, вилучені глушаться нулем
+  // підходів, таблиця Set не змінюється.
+  if (await isProgramUpToDate()) {
+    console.log(`Workout program present (v${PROGRAM_VERSION}). Skipping seed.`);
+    return;
+  }
+
+  console.log(`Older program detected — migrating to v${PROGRAM_VERSION} (set history preserved)...`);
+  await migrateProgramToV8();
 }
 
 main()

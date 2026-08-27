@@ -28,6 +28,7 @@ export function classifyMuscleGroup(name: string, exerciseType?: string): string
   if (n.includes("підтягув")) return "Спина";
   if (n.includes("тяга") || n.includes("верхнього блоку")) return "Спина";
   if (n.includes("віджимання") || n.includes("брус")) return "Груди";
+  if (n.includes("зведення") || n.includes("fly") || n.includes("батерфляй")) return "Груди";
   if (n.includes("махи")) return "Плечі";
   if (n.includes("молотков") || n.includes("hammer")) return "Біцепс";
   if (n.includes("біцепс")) return "Біцепс";

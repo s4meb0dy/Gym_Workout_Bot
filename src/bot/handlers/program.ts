@@ -1,7 +1,7 @@
 import { Bot } from "grammy";
 import { BotContext } from "../bot";
 import { backToMenuKeyboard } from "../keyboards";
-import { formatExerciseTarget, formatProgressionLabel, formatRestDuration } from "../../services/progression";
+import { formatRepTarget, formatProgressionLabel, formatRestDuration } from "../../services/progression";
 import { getWorkoutDayByNumber, getWorkoutDays } from "../../services/workout.service";
 
 function formatBaseline(exercise: {
@@ -43,7 +43,7 @@ export function registerProgramHandlers(bot: Bot<BotContext>) {
         text += `\n<b>▸ ${currentBlock}</b>\n`;
       }
 
-      const repTarget = formatExerciseTarget(
+      const repTarget = formatRepTarget(
         exercise.targetRepsMin,
         exercise.targetRepsMax,
         exercise.exerciseType as "reps" | "time" | "warmup",

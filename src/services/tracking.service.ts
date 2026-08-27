@@ -152,7 +152,7 @@ export async function getMacrosForDate(
 
 export async function getCalorieTarget(userId: string): Promise<number> {
   const setting = await prisma.reminderSetting.findUnique({ where: { userId } });
-  return setting?.calorieTarget ?? 2000;
+  return setting?.calorieTarget ?? 2300;
 }
 
 export async function getProteinForDate(userId: string, date = localDateString()): Promise<number> {
@@ -230,6 +230,7 @@ export async function upsertReminderSetting(
     workoutHour: number;
     proteinHour: number;
     proteinTarget: number;
+    calorieTarget: number;
     backupEnabled: boolean;
     digestEnabled: boolean;
     supplementsEnabled: boolean;
