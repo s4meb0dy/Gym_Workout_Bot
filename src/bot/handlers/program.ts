@@ -2,7 +2,7 @@ import { Bot } from "grammy";
 import { BotContext } from "../bot";
 import { backToMenuKeyboard } from "../keyboards";
 import { formatRepTarget, formatProgressionLabel, formatRestDuration } from "../../services/progression";
-import { getWorkoutDayByNumber, getWorkoutDays } from "../../services/workout.service";
+import { getWorkoutDayByNumber, getWorkoutDays, isArchivedExercise } from "../../services/workout.service";
 
 function formatBaseline(exercise: {
   baselineNote: string | null;
@@ -37,7 +37,9 @@ export function registerProgramHandlers(bot: Bot<BotContext>) {
     let text = `<b>${day.weekday}: ${day.name}</b>\n\n`;
     let currentBlock = "";
 
-    for (const exercise of day.exercises) {
+    const activeExercises = day.exercises.filter((exercise) => !isArchivedExercise(exercise));
+
+    for (const [index, exercise] of activeExercises.entries()) {
       if (exercise.block !== currentBlock) {
         currentBlock = exercise.block;
         text += `\n<b>▸ ${currentBlock}</b>\n`;
@@ -49,7 +51,7 @@ export function registerProgramHandlers(bot: Bot<BotContext>) {
         exercise.exerciseType as "reps" | "time" | "warmup",
       );
 
-      text += `${exercise.orderIndex}. ${exercise.name}\n`;
+      text += `${index + 1}. ${exercise.name}\n`;
       text += `   ${exercise.targetSets}×${repTarget}\n`;
       text += `   Відпочинок: ${formatRestDuration(exercise.restTimeInSeconds)}\n`;
 

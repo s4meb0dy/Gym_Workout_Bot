@@ -16,6 +16,7 @@ import {
   getWorkoutDayByNumber,
   getWorkoutDayById,
   getWorkoutDays,
+  isArchivedExercise,
   moveExercise,
   renameExercise,
   updateExerciseTargets,
@@ -39,7 +40,9 @@ async function showExerciseList(ctx: BotContext, dayNumber: number) {
     parse_mode: "HTML",
     reply_markup: editProgramExerciseListKeyboard(
       dayNumber,
-      day.exercises.map((e) => ({ id: e.id, name: e.name })),
+      day.exercises
+        .filter((e) => !isArchivedExercise(e))
+        .map((e) => ({ id: e.id, name: e.name })),
     ),
   });
 }
@@ -51,7 +54,9 @@ async function refreshExerciseList(ctx: BotContext, dayNumber: number) {
     await ctx.editMessageReplyMarkup({
       reply_markup: editProgramExerciseListKeyboard(
         dayNumber,
-        day.exercises.map((e) => ({ id: e.id, name: e.name })),
+        day.exercises
+        .filter((e) => !isArchivedExercise(e))
+        .map((e) => ({ id: e.id, name: e.name })),
       ),
     });
   } catch {

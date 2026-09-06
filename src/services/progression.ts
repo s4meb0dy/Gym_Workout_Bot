@@ -44,6 +44,38 @@ export function getBaselineWeight(baseline: ExerciseBaseline): number {
   return 0;
 }
 
+/**
+ * Робоча противага в Гравітоні. Перший підхід часто йде без противаги (у логах це
+ * 1 кг, бо нуль ввести не можна), тому абсолютний мінімум завищував рівень і
+ * прогресія пропонувала неможливу вагу. Беремо противагу, з якою зроблено
+ * більшість підходів; за нічиєї — меншу.
+ */
+export function getAssistReferenceWeight(sets: SetResult[]): number {
+  const counts = new Map<number, number>();
+  for (const set of sets) {
+    counts.set(set.weight, (counts.get(set.weight) ?? 0) + 1);
+  }
+
+  let reference = sets[0]?.weight ?? 0;
+  let bestCount = 0;
+  for (const [weight, count] of counts) {
+    if (count > bestCount || (count === bestCount && weight < reference)) {
+      reference = weight;
+      bestCount = count;
+    }
+  }
+  return reference;
+}
+
+export function getReferenceWeight(sets: SetResult[], progressionMode: ProgressionMode): number {
+  if (sets.length === 0) {
+    return 0;
+  }
+  return progressionMode === "assist"
+    ? getAssistReferenceWeight(sets)
+    : Math.max(...sets.map((set) => set.weight));
+}
+
 export function formatRepTarget(min: number, max: number, exerciseType: ExerciseType): string {
   if (exerciseType === "warmup") {
     return `${max} повторень (без ваги)`;
@@ -136,16 +168,10 @@ export function calculateProgression(
   const lastReps = lastSet.reps;
 
   // Робоча вага для прогресії — найважчий підхід (не останній, якщо там backoff).
-  const referenceWeight =
-    progressionMode === "assist"
-      ? Math.min(...workingSets.map((set) => set.weight))
-      : Math.max(...workingSets.map((set) => set.weight));
+  const referenceWeight = getReferenceWeight(workingSets, progressionMode);
   const lastWeight = referenceWeight;
 
-  const topSets =
-    progressionMode === "assist"
-      ? workingSets.filter((set) => set.weight <= referenceWeight + 0.01)
-      : workingSets.filter((set) => set.weight >= referenceWeight - 0.01);
+  const topSets = workingSets.filter((set) => Math.abs(set.weight - referenceWeight) < 0.01);
 
   const allHitMax =
     topSets.length >= targetSets && topSets.every((set) => set.reps >= targetRepsMax);
@@ -285,20 +311,32 @@ export function formatWarmupPrompt(
   const progressLine =
     exerciseIndex && totalExercises ? `📍 Вправа ${exerciseIndex}/${totalExercises}\n` : "";
 
-  const header = exercise.block.toLowerCase().includes("розминка")
+  const block = exercise.block.toLowerCase();
+  const isPosture = block.includes("постава");
+  const header = block.includes("розминка")
     ? "🔥 <b>Розминка</b>"
-    : `🧱 <b>Без ваги</b>\n📦 ${exercise.block}`;
+    : isPosture
+      ? "🧘 <b>Постава</b>"
+      : `🧱 <b>Без ваги</b>\n📦 ${exercise.block}`;
 
-  let text =
-    `${progressLine}${header}\n\n` +
-    `<b>${exercise.name}</b>\n` +
-    `Підхід ${setNumber}/${exercise.targetSets} • ${exercise.targetRepsMax} повторень\n`;
+  // Розминка-чекліст — один "підхід" на весь список, тому рахунок повторень
+  // і таймер відпочинку тут лише шум.
+  const isChecklist = exercise.targetSets === 1 && exercise.targetRepsMax <= 1;
+
+  let text = `${progressLine}${header}\n\n` + `<b>${exercise.name}</b>\n`;
+  text += isChecklist
+    ? `Пройди всі пункти по черзі — це ${isPosture ? "≈5 хвилин" : "3–5 хвилин"}.\n`
+    : `Підхід ${setNumber}/${exercise.targetSets} • ${exercise.targetRepsMax} повторень\n`;
 
   if (exercise.technique) {
     text += `\n💡 ${exercise.technique}\n`;
   }
 
-  text += `\n⏱️ Відпочинок між підходами: ${formatRestDuration(exercise.restTimeInSeconds ?? 60)}\n`;
+  const rest = exercise.restTimeInSeconds ?? 60;
+  if (rest > 0) {
+    text += `\n⏱️ Відпочинок між підходами: ${formatRestDuration(rest)}\n`;
+  }
+
   text += `\nНатисни «✅ Підхід виконано», коли завершиш.`;
   return text;
 }

@@ -6,6 +6,8 @@
 export function classifyMuscleGroup(name: string, exerciseType?: string): string {
   const n = name.toLowerCase();
 
+  if (n.includes("розминка")) return "Розминка";
+  if (n.includes("постава")) return "Постава";
   if (exerciseType === "warmup") return "Прес/Кор";
   if (n.includes("фермер") || n.includes("farmer")) return "Функціонал";
   if (n.includes("носки") || n.includes("calf")) return "Литки";

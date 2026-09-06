@@ -56,8 +56,9 @@ async function isProgramUpToDate(): Promise<boolean> {
   const active = firstDay.exercises.filter((e) => e.targetSets > 0);
   const isUpperLowerSplit = firstDay.name.includes("Верх");
   const hasMuscleGroups = active.some((e) => e.muscleGroup && e.muscleGroup !== "Інше");
-  // З v8 прес більше не стоїть першим — перший рух дня має бути робочим.
-  const coreMovedToEnd = active[0]?.exerciseType !== "warmup";
+  // З v8 прес більше не стоїть першим. Блок «Розминка» першим — це нормально,
+  // недопустимий саме прес як стартова вправа.
+  const coreMovedToEnd = active[0]?.muscleGroup !== "Прес/Кор";
 
   return (
     isUpperLowerSplit &&

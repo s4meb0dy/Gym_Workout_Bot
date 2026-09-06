@@ -190,10 +190,22 @@ export async function getLastCompletedSession(userId: string, workoutDayId: numb
 
 export async function getExerciseHistorySets(
   userId: string,
-  workoutDayId: number,
+  _workoutDayId: number,
   exerciseId: number,
 ): Promise<SetResult[]> {
-  const lastSession = await getLastCompletedSession(userId, workoutDayId);
+  // Шукаємо останню сесію з цією вправою в будь-якому дні — після перестановок
+  // v8 історія могла лишитися на «старому» дні тижня.
+  const lastSession = await prisma.workoutSession.findFirst({
+    where: {
+      userId,
+      completedAt: { not: null },
+      sets: { some: { exerciseId, weight: { gt: 0 }, reps: { gt: 0 } } },
+    },
+    orderBy: { completedAt: "desc" },
+    include: {
+      sets: { orderBy: [{ setNumber: "asc" }, { createdAt: "asc" }] },
+    },
+  });
   if (!lastSession) {
     return [];
   }

@@ -31,7 +31,86 @@ export const REST_MACHINE = 90;
 /** Мала ізоляція, плечі та руки */
 export const REST_ISOLATION = 60;
 
-export const PROGRAM_VERSION = 8;
+export const PROGRAM_VERSION = 10;
+
+/**
+ * Блок без ваги: один "підхід"-чекліст. Ваги немає, таймера відпочинку немає,
+ * бот показує список і чекає підтвердження.
+ */
+function checklistBlock(
+  name: string,
+  block: string,
+  bodyPart: "upper" | "lower",
+  steps: string[],
+): WorkoutExerciseSeed {
+  return {
+    name,
+    block,
+    targetSets: 1,
+    targetRepsMin: 1,
+    targetRepsMax: 1,
+    bodyPart,
+    exerciseType: "warmup",
+    progressionStep: 0,
+    restTimeInSeconds: 0,
+    technique: steps.join("\n"),
+  };
+}
+
+/**
+ * Розминка v10 — тільки кардіо і підвідні підходи. Мобільність винесено в
+ * блок «Постава» в кінці дня: робити окремі вправи після кардіо незручно, а
+ * статична розтяжка перед роботою ще й тимчасово знижує силу. Постава ж
+ * потребує частоти, а не свіжості, тому кінець тренування для неї — краще місце.
+ */
+const warmup = (name: string, bodyPart: "upper" | "lower", steps: string[]) =>
+  checklistBlock(name, "Розминка", bodyPart, steps);
+
+/**
+ * Причина цього блоку — надмірний передній нахил тазу (anterior pelvic tilt) і
+ * кіфоз грудного відділу від сидіння. При APT низ живота випирає навіть на
+ * низькому відсотку жиру, бо таз тягне передню стінку вперед. Розтяжка згиначів
+ * стегна прибирає тягу, dead bug вчить прес тримати таз у нейтралі, а прогин і
+ * розтяжка грудних розкривають грудний відділ.
+ */
+const POSTURE_STEPS = [
+  "1) Розтяжка згиначів стегна на коліні — 45 сек на кожну ногу. КЛЮЧОВЕ: підкрути таз (копчик вниз, «підібрати хвіст») і напруж сідницю задньої ноги. Без цього тягнеться поясниця, а не згиначі — і сенсу нуль.",
+  "2) Dead bug — 8 на сторону. Поясниця притиснута до підлоги ВЕСЬ час, ребра тягни вниз. Це вчить прес тримати таз у нейтралі — саме те, що прибирає випирання низу живота.",
+  "3) Прогин грудним відділом через лаву або ролик — 10 повторень, руки за головою, дихай у розтяг.",
+  "4) Розтяжка грудних у дверях або на рамі — 30 сек на сторону, лікоть на рівні плеча. Тісні груди тягнуть плечі вперед.",
+];
+
+const POSTURE_BLOCK = checklistBlock(
+  "Постава — таз і грудний відділ",
+  "Постава (у кінці)",
+  "upper",
+  POSTURE_STEPS,
+);
+
+const WARMUP_UPPER_CHEST = warmup("Розминка — верх (груди)", "upper", [
+  "1) Кардіо 3–5 хв: велотренажер або дорожка, до легкої задишки.",
+  "2) Підвідні в жимі на похилій: 10 кг×10, 14 кг×6, 18 кг×3 — і аж тоді робочі 20 кг.",
+  "Мобільність і розтяжка тепер у блоці «Постава» в кінці тренування.",
+]);
+
+const WARMUP_LOWER_QUAD = warmup("Розминка — низ (квадрицепс)", "lower", [
+  "1) Кардіо 3–5 хв.",
+  "2) Присідання з власною вагою — 10, кожне глибше. Займає 30 сек, але коліна і стегна заходять у робочу амплітуду.",
+  "3) Підвідні в Goblet: 12 кг×10, 20 кг×8 — і аж тоді робочі 30 кг.",
+  "Мобільність і розтяжка — у блоці «Постава» в кінці.",
+]);
+
+const WARMUP_UPPER_BACK = warmup("Розминка — верх (спина)", "upper", [
+  "1) Кардіо 3–5 хв.",
+  "2) Підвідні: підтягування з противагою 18 кг×6, потім 14 кг×4 — і аж тоді перший робочий підхід без противаги.",
+  "Мобільність і розтяжка — у блоці «Постава» в кінці.",
+]);
+
+const WARMUP_LOWER_POSTERIOR = warmup("Розминка — низ (задня поверхня)", "lower", [
+  "1) Кардіо 3–5 хв.",
+  "2) Підвідні в румунській тязі: 12 кг×10, 18 кг×8 — і аж тоді робочі 26 кг. На перших підвідних відчуй шарнір у стегні, а не згин спини.",
+  "Мобільність і розтяжка — у блоці «Постава» в кінці.",
+]);
 
 /**
  * Прес — 3 підходи в КІНЦІ двох днів (Ср + Нд), а не 4×15 на старті кожного дня.
@@ -47,9 +126,9 @@ const CORE_CABLE_CRUNCH: WorkoutExerciseSeed = {
   bodyPart: "upper",
   progressionStep: 2,
   restTimeInSeconds: REST_ISOLATION,
-  baselineWeightMin: 25,
-  baselineWeightMax: 25,
-  baselineNote: "25 кг",
+  baselineWeightMin: 45,
+  baselineWeightMax: 45,
+  baselineNote: "45 кг",
   technique: "Скругли спину, тягни ребрами до таза, без ривків. Прес у кінці — брейс на базі був свіжий.",
 };
 
@@ -74,6 +153,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
     weekday: "Понеділок",
     name: "Верх A (акцент груди)",
     exercises: [
+      WARMUP_UPPER_CHEST,
       {
         name: "Жим гантелей на похилій лаві (верх грудей)",
         block: "Гантелі",
@@ -83,9 +163,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_PRIORITY,
-        baselineWeightMin: 12,
-        baselineWeightMax: 14,
-        baselineNote: "2×12–14 кг",
+        baselineWeightMin: 20,
+        baselineWeightMax: 20,
+        baselineNote: "2×20 кг",
         technique:
           "Лава 30°. ПЕРШИЙ рух дня — груди отримують максимально свіже навантаження. Опускай до легкого розтягу, без відбиву.",
       },
@@ -98,9 +178,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 14,
-        baselineWeightMax: 16,
-        baselineNote: "14–16 кг",
+        baselineWeightMin: 26,
+        baselineWeightMax: 26,
+        baselineNote: "26 кг",
         technique: "Тягни лопаткою, не рукою. Пауза 1 сек у верхній точці.",
       },
       {
@@ -112,9 +192,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 14,
-        baselineWeightMax: 14,
-        baselineNote: "2×14 кг",
+        baselineWeightMin: 22,
+        baselineWeightMax: 22,
+        baselineNote: "2×22 кг",
         technique: "Другий жим дня — добиваємо середину та низ грудей.",
       },
       {
@@ -126,9 +206,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_MACHINE,
-        baselineWeightMin: 39,
-        baselineWeightMax: 39,
-        baselineNote: "39 кг",
+        baselineWeightMin: 52,
+        baselineWeightMax: 52,
+        baselineNote: "52 кг",
         technique: "Широкий хват, тягни до верху грудей, лікті вниз — ширина спини.",
       },
       {
@@ -140,9 +220,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 6,
-        baselineWeightMax: 6,
-        baselineNote: "2×6 кг",
+        baselineWeightMin: 8,
+        baselineWeightMax: 8,
+        baselineNote: "2×8 кг",
         technique: "Середня дельта створює ширину плечей — окремий вертикальний жим не потрібен.",
       },
       {
@@ -159,6 +239,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineNote: "23 кг",
         technique: "Підтримуючий об'єм: 2 підходи. Руки вже розвинені, енергія йде на груди/спину.",
       },
+      POSTURE_BLOCK,
     ],
   },
   {
@@ -166,6 +247,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
     weekday: "Середа",
     name: "Низ A (квадрицепс)",
     exercises: [
+      WARMUP_LOWER_QUAD,
       {
         name: "Goblet Squats (присідання з гантеллю перед грудьми)",
         block: "Гантелі",
@@ -175,9 +257,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 2,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 20,
-        baselineWeightMax: 20,
-        baselineNote: "20 кг",
+        baselineWeightMin: 30,
+        baselineWeightMax: 30,
+        baselineNote: "30 кг",
         technique: "Кор свіжий — тримай жорсткий брейс. Прес перенесено в кінець тренування.",
       },
       {
@@ -189,9 +271,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 5,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 80,
-        baselineWeightMax: 80,
-        baselineNote: "80 кг",
+        baselineWeightMin: 113,
+        baselineWeightMax: 113,
+        baselineNote: "113 кг",
         technique: "Стопи на ширині плечей, не розгинай коліна до кінця.",
       },
       {
@@ -203,9 +285,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 2,
         restTimeInSeconds: REST_MACHINE,
-        baselineWeightMin: 32,
-        baselineWeightMax: 32,
-        baselineNote: "32 кг",
+        baselineWeightMin: 41,
+        baselineWeightMax: 41,
+        baselineNote: "41 кг",
       },
       {
         name: "Підйоми на носки стоячи (Standing Calf Raises)",
@@ -216,12 +298,13 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 5,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 50,
-        baselineWeightMax: 50,
-        baselineNote: "50 кг",
+        baselineWeightMin: 70,
+        baselineWeightMax: 70,
+        baselineNote: "70 кг",
         technique: "Повна амплітуда: глибоко вниз, максимально вгору, пауза зверху.",
       },
       CORE_CABLE_CRUNCH,
+      POSTURE_BLOCK,
     ],
   },
   {
@@ -229,6 +312,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
     weekday: "П'ятниця",
     name: "Верх B (акцент спина)",
     exercises: [
+      WARMUP_UPPER_BACK,
       {
         name: "Підтягування в Гравітоні широким хватом",
         block: "Гравітрон (Турнік)",
@@ -239,9 +323,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         progressionMode: "assist",
         progressionStep: 2,
         restTimeInSeconds: REST_PRIORITY,
-        baselineWeightMin: 23,
-        baselineWeightMax: 23,
-        baselineNote: "противага 23 кг",
+        baselineWeightMin: 9,
+        baselineWeightMax: 9,
+        baselineNote: "противага 9 кг (1-й підхід без)",
         technique:
           "ПЕРШИЙ рух дня — спина свіжа. Долонями від себе, акцент на зведенні лопаток. Коли зробиш 4×10 — мінус 2 кг противаги.",
       },
@@ -255,9 +339,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         progressionMode: "assist",
         progressionStep: 2,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 23,
-        baselineWeightMax: 23,
-        baselineNote: "противага 23 кг",
+        baselineWeightMin: 4.5,
+        baselineWeightMax: 4.5,
+        baselineNote: "противага 4.5 кг (1-й підхід без)",
         technique: "Корпус нахилений вперед 15–20°, лікті під 45° — акцент на груди, а не трицепс.",
       },
       {
@@ -298,9 +382,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 6,
-        baselineWeightMax: 6,
-        baselineNote: "2×6 кг",
+        baselineWeightMin: 8,
+        baselineWeightMax: 8,
+        baselineNote: "2×8 кг",
       },
       {
         name: "Молоткові підйоми (Hammer Curls)",
@@ -311,11 +395,12 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 10,
-        baselineWeightMax: 10,
-        baselineNote: "2×10 кг",
+        baselineWeightMin: 14,
+        baselineWeightMax: 14,
+        baselineNote: "2×14 кг",
         technique: "Підтримуючий об'єм: 2 підходи.",
       },
+      POSTURE_BLOCK,
     ],
   },
   {
@@ -323,6 +408,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
     weekday: "Неділя",
     name: "Низ B (задня поверхня та сідниці)",
     exercises: [
+      WARMUP_LOWER_POSTERIOR,
       {
         name: "Румунська тяга з гантелями",
         block: "Гантелі",
@@ -332,9 +418,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 2,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 14,
-        baselineWeightMax: 16,
-        baselineNote: "2×14–16 кг",
+        baselineWeightMin: 26,
+        baselineWeightMax: 26,
+        baselineNote: "2×26 кг",
         technique:
           "Спина нейтральна, таз назад. Кор свіжий — саме тому прес перенесено в кінець дня.",
       },
@@ -360,9 +446,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "lower",
         progressionStep: 5,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 90,
-        baselineWeightMax: 90,
-        baselineNote: "90 кг",
+        baselineWeightMin: 79,
+        baselineWeightMax: 79,
+        baselineNote: "79 кг",
         technique: "Носки на нижньому краю платформи, коліна злегка зігнуті, повна амплітуда.",
       },
       {
@@ -375,12 +461,13 @@ export const workoutProgram: WorkoutDaySeed[] = [
         exerciseType: "time",
         progressionStep: 2,
         restTimeInSeconds: REST_MACHINE,
-        baselineWeightMin: 20,
-        baselineWeightMax: 20,
-        baselineNote: "2×20 кг",
+        baselineWeightMin: 30,
+        baselineWeightMax: 30,
+        baselineNote: "2×30 кг",
         technique: "45 сек на підхід. Антиротаційний кор без згинання спини.",
       },
       CORE_LEG_RAISES,
+      POSTURE_BLOCK,
     ],
   },
 ];
