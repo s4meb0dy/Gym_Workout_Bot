@@ -325,7 +325,7 @@ export function formatWarmupPrompt(
 
   let text = `${progressLine}${header}\n\n` + `<b>${exercise.name}</b>\n`;
   text += isChecklist
-    ? `Пройди всі пункти по черзі — це ${isPosture ? "≈5 хвилин" : "3–5 хвилин"}.\n`
+    ? `Пройди всі пункти по черзі — це ${isPosture ? "≈6 хвилин" : "3–5 хвилин"}.\n`
     : `Підхід ${setNumber}/${exercise.targetSets} • ${exercise.targetRepsMax} повторень\n`;
 
   if (exercise.technique) {
