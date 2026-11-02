@@ -36,6 +36,21 @@ import {
   updateExerciseTargets,
   updateSet,
 } from "../services/workout.service";
+import { buildAdvice, buildDayView, isValidDay } from "../services/webapp-day.service";
+import {
+  addNutritionEntry,
+  addWater,
+  deleteBodyWeight,
+  deleteNutritionEntry,
+  getBodyWeightById,
+  getNutritionEntryById,
+  localDateString,
+  logBodyWeight,
+  MacroEntry,
+  undoLastWater,
+  updateNutritionEntry,
+  upsertReminderSetting,
+} from "../services/tracking.service";
 import { requireWebAppUser } from "./webapp-auth";
 
 let botApi: Api | null = null;
@@ -115,6 +130,16 @@ function parseExerciseUpdate(body: unknown): ExerciseUpdate | null {
   }
 
   return out;
+}
+
+function parseMacros(body: unknown): MacroEntry | null {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const nums = [b.calories, b.protein, b.fat, b.carbs].map((v) => Number(v ?? 0));
+  if (nums.some((n) => !Number.isFinite(n) || n < 0 || n > 10000)) return null;
+  const [calories, protein, fat, carbs] = nums;
+  if (calories === 0 && protein === 0) return null;
+  const label = String(b.label ?? "").trim().slice(0, 80);
+  return { calories, protein, fat, carbs, label: label || (calories > 0 ? "Їжа (вручну)" : "Білок") };
 }
 
 function notifyRest(user: User, seconds: number): void {
@@ -344,6 +369,142 @@ export function registerWebAppRoutes(app: express.Application): void {
       }
       const points = await getOneRmHistory(user.id, exercise.id);
       res.json({ name: exercise.name, points });
+    }),
+  );
+
+  // ---- Day: nutrition, water, body weight, health ----
+
+  const dayOf = (value: unknown) => (isValidDay(value) ? value : localDateString());
+  const sendDay = async (res: express.Response, user: User, date: string) => {
+    res.json({ day: await buildDayView(user.id, date) });
+  };
+
+  api.get(
+    "/day",
+    route(async (req, res, user) => {
+      await sendDay(res, user, dayOf(req.query.date));
+    }),
+  );
+
+  api.post(
+    "/nutrition",
+    route(async (req, res, user) => {
+      const entry = parseMacros(req.body);
+      if (!entry) {
+        res.status(400).json({ error: "invalid_entry" });
+        return;
+      }
+      const date = dayOf(req.body?.date);
+      await addNutritionEntry(user.id, entry, date);
+      await sendDay(res, user, date);
+    }),
+  );
+
+  api.patch(
+    "/nutrition/:id",
+    route(async (req, res, user) => {
+      const existing = await getNutritionEntryById(String(req.params.id));
+      const entry = parseMacros(req.body);
+      if (!existing || existing.userId !== user.id || !entry) {
+        res.status(400).json({ error: "invalid_entry" });
+        return;
+      }
+      await updateNutritionEntry(existing.id, entry);
+      await sendDay(res, user, existing.date);
+    }),
+  );
+
+  api.delete(
+    "/nutrition/:id",
+    route(async (req, res, user) => {
+      const existing = await getNutritionEntryById(String(req.params.id));
+      if (!existing || existing.userId !== user.id) {
+        res.status(404).json({ error: "entry_not_found" });
+        return;
+      }
+      await deleteNutritionEntry(existing.id);
+      await sendDay(res, user, existing.date);
+    }),
+  );
+
+  api.post(
+    "/water",
+    route(async (req, res, user) => {
+      const ml = Number(req.body?.ml);
+      if (!Number.isFinite(ml) || ml < 10 || ml > 3000) {
+        res.status(400).json({ error: "invalid_water" });
+        return;
+      }
+      const date = dayOf(req.body?.date);
+      await addWater(user.id, ml, date);
+      await sendDay(res, user, date);
+    }),
+  );
+
+  api.post(
+    "/water/undo",
+    route(async (req, res, user) => {
+      const date = dayOf(req.body?.date);
+      await undoLastWater(user.id, date);
+      await sendDay(res, user, date);
+    }),
+  );
+
+  api.post(
+    "/weight",
+    route(async (req, res, user) => {
+      const kg = Number(req.body?.weightKg);
+      if (!Number.isFinite(kg) || kg < 30 || kg > 300) {
+        res.status(400).json({ error: "invalid_weight" });
+        return;
+      }
+      await logBodyWeight(user.id, Math.round(kg * 10) / 10);
+      await sendDay(res, user, dayOf(req.body?.date));
+    }),
+  );
+
+  api.delete(
+    "/weight/:id",
+    route(async (req, res, user) => {
+      const row = await getBodyWeightById(String(req.params.id));
+      if (!row || row.userId !== user.id) {
+        res.status(404).json({ error: "weight_not_found" });
+        return;
+      }
+      await deleteBodyWeight(row.id);
+      await sendDay(res, user, dayOf(req.query.date));
+    }),
+  );
+
+  api.patch(
+    "/targets",
+    route(async (req, res, user) => {
+      const b = (req.body ?? {}) as Record<string, unknown>;
+      const calories = Number(b.calories);
+      const protein = Number(b.protein);
+      const waterMl = Number(b.waterMl);
+      if (
+        !Number.isInteger(calories) || calories < 800 || calories > 6000 ||
+        !Number.isInteger(protein) || protein < 20 || protein > 400 ||
+        !Number.isInteger(waterMl) || waterMl < 500 || waterMl > 8000
+      ) {
+        res.status(400).json({ error: "invalid_targets" });
+        return;
+      }
+      await upsertReminderSetting(user.id, Number(user.telegramId), {
+        calorieTarget: calories,
+        proteinTarget: protein,
+        waterTargetMl: waterMl,
+      });
+      await sendDay(res, user, dayOf(b.date));
+    }),
+  );
+
+  api.post(
+    "/health/advice",
+    route(async (req, res, user) => {
+      const advice = await buildAdvice(user.id, dayOf(req.body?.date));
+      res.json({ advice });
     }),
   );
 

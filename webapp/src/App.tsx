@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { api, DayView, Summary, WorkoutView } from "./api";
 import { LoadState, Tab, TabBar } from "./components";
+import { DayScreen } from "./DayScreen";
 import { DaysScreen } from "./DaysScreen";
 import { HistoryScreen } from "./HistoryScreen";
 import { ProgramScreen } from "./ProgramScreen";
@@ -82,6 +83,7 @@ export function App() {
     <>
       {/* Вкладка тренування живе весь час, щоб не губити таймер і поточну вправу. */}
       <WorkoutTab visible={tab === "workout"} />
+      {tab === "day" ? <DayScreen /> : null}
       {tab === "program" ? <ProgramScreen /> : null}
       {tab === "history" ? <HistoryScreen /> : null}
       {tab === "progress" ? <ProgressScreen /> : null}

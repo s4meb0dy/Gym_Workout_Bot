@@ -291,5 +291,44 @@ input[type="number"] { -moz-appearance: textfield; }
 .column-bar { width: 100%; border-radius: 5px 5px 2px 2px; min-height: 2px; transition: height 0.3s ease; }
 .column-value { color: var(--muted); height: 14px; }
 
+.card { background: var(--card); border-radius: 14px; padding: 14px; }
+.big-num { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.entry {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  border-top: 0.5px solid var(--line);
+  text-align: left;
+}
+.entry.editing { color: var(--accent-text); }
+
+.text-input {
+  text-align: left;
+  background: var(--card-2);
+  border-radius: 10px;
+  height: 42px;
+  padding: 0 12px;
+}
+.center-text { text-align: center; }
+.macro-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
+.macro-grid label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+
+.metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 8px; }
+
+.tab span { white-space: nowrap; }
+
 .center { min-height: 70vh; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 8px; }
 .error { color: var(--danger); font-size: 13px; margin-top: 8px; }

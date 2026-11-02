@@ -1,0 +1,102 @@
+import { prisma } from "../db/client";
+import { generateHealthAdvice } from "./health-coach.service";
+import { buildHealthContext, getHealthLog } from "./health.service";
+import {
+  getCalorieTarget,
+  getMacrosForDate,
+  getNutritionEntries,
+  getProteinTarget,
+  getWaterForDate,
+  getWaterTarget,
+  localDateString,
+} from "./tracking.service";
+
+export function isValidDay(date: unknown): date is string {
+  return typeof date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(date) && date <= localDateString();
+}
+
+/** Останні унікальні страви — для швидкого повторного додавання одним натиском. */
+async function getRecentFoods(userId: string, limit = 8) {
+  const rows = await prisma.nutritionLog.findMany({
+    where: { userId, calories: { gt: 0 }, label: { not: null } },
+    orderBy: { recordedAt: "desc" },
+    take: 80,
+  });
+
+  const seen = new Set<string>();
+  const foods = [];
+  for (const row of rows) {
+    const key = row.label!.trim().toLowerCase();
+    if (seen.has(key) || key === "їжа (вручну)") continue;
+    seen.add(key);
+    foods.push({
+      label: row.label!,
+      calories: Math.round(row.calories),
+      protein: Math.round(row.proteinGrams),
+      fat: Math.round(row.fatGrams),
+      carbs: Math.round(row.carbsGrams),
+    });
+    if (foods.length >= limit) break;
+  }
+  return foods;
+}
+
+async function getWeightView(userId: string) {
+  const rows = await prisma.bodyWeight.findMany({
+    where: { userId },
+    orderBy: { recordedAt: "desc" },
+    take: 60,
+  });
+  const points = rows.reverse().map((r) => ({ id: r.id, date: r.recordedAt, weightKg: r.weightKg }));
+  return { points };
+}
+
+export async function buildDayView(userId: string, date: string) {
+  const [macros, calorieTarget, proteinTarget, waterTarget, entries, water, recentFoods, weight, health] =
+    await Promise.all([
+      getMacrosForDate(userId, date),
+      getCalorieTarget(userId),
+      getProteinTarget(userId),
+      getWaterTarget(userId),
+      getNutritionEntries(userId, date),
+      getWaterForDate(userId, date),
+      getRecentFoods(userId),
+      getWeightView(userId),
+      getHealthLog(userId, date),
+    ]);
+
+  return {
+    date,
+    isToday: date === localDateString(),
+    targets: { calories: calorieTarget, protein: proteinTarget, waterMl: waterTarget },
+    macros,
+    entries: entries.map((e) => ({
+      id: e.id,
+      label: e.label ?? (e.calories > 0 ? "Їжа" : "Білок"),
+      calories: Math.round(e.calories),
+      protein: Math.round(e.proteinGrams),
+      fat: Math.round(e.fatGrams),
+      carbs: Math.round(e.carbsGrams),
+    })),
+    waterMl: water,
+    recentFoods,
+    weight,
+    health: health
+      ? {
+          sleepMinutes: health.sleepMinutes,
+          restingHr: health.restingHr,
+          hrv: health.hrv,
+          steps: health.steps,
+          activeCalories: health.activeCalories,
+          source: health.source,
+        }
+      : null,
+  };
+}
+
+export async function buildAdvice(userId: string, date: string): Promise<string | null> {
+  const ctx = await buildHealthContext(userId, date);
+  if (!ctx) return null;
+  const advice = await generateHealthAdvice(ctx);
+  return advice.replace(/<[^>]+>/g, "").trim();
+}

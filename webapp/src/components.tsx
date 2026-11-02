@@ -87,10 +87,11 @@ export function Section({ title, children, aside }: { title: string; children: R
   );
 }
 
-export type Tab = "workout" | "program" | "history" | "progress";
+export type Tab = "workout" | "day" | "program" | "history" | "progress";
 
 const TAB_ICONS: Record<Tab, ReactNode> = {
   workout: <path d="M6 8v8M18 8v8M3 10v4M21 10v4M6 12h12" />,
+  day: <path d="M12 21s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.6-7 10-7 10z" />,
   program: <path d="M9 6h11M9 12h11M9 18h11M4 6h.01M4 12h.01M4 18h.01" />,
   history: <path d="M12 7v5l3 2M3 12a9 9 0 1 0 3-6.7L3 8M3 3v5h5" />,
   progress: <path d="M4 19h16M5 15l4-4 4 3 6-7" />,
@@ -98,6 +99,7 @@ const TAB_ICONS: Record<Tab, ReactNode> = {
 
 const TAB_LABELS: Record<Tab, string> = {
   workout: "Тренування",
+  day: "День",
   program: "Програма",
   history: "Історія",
   progress: "Прогрес",

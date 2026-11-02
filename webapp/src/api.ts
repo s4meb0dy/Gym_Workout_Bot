@@ -117,6 +117,37 @@ export interface OneRmPoint {
   bestReps: number;
 }
 
+export interface Macros {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
+export interface FoodEntry extends Macros {
+  id: string;
+  label: string;
+}
+
+export interface DayData {
+  date: string;
+  isToday: boolean;
+  targets: { calories: number; protein: number; waterMl: number };
+  macros: Macros;
+  entries: FoodEntry[];
+  waterMl: number;
+  recentFoods: Array<Macros & { label: string }>;
+  weight: { points: Array<{ id: string; date: string; weightKg: number }> };
+  health: {
+    sleepMinutes: number | null;
+    restingHr: number | null;
+    hrv: number | null;
+    steps: number | null;
+    activeCalories: number | null;
+    source: string;
+  } | null;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (tg?.initData) headers.Authorization = `tma ${tg.initData}`;
@@ -158,6 +189,19 @@ export const api = {
   history: () => request<{ sessions: HistoryItem[] }>("GET", "/history"),
   historyDetail: (id: string) => request<{ session: HistoryDetail }>("GET", `/history/${id}`),
   progress: () => request<ProgressData>("GET", "/progress"),
+  day: (date?: string) => request<{ day: DayData }>("GET", `/day${date ? `?date=${date}` : ""}`),
+  addFood: (date: string, food: Macros & { label: string }) =>
+    request<{ day: DayData }>("POST", "/nutrition", { ...food, date }),
+  updateFood: (id: string, food: Macros & { label: string }) =>
+    request<{ day: DayData }>("PATCH", `/nutrition/${id}`, food),
+  deleteFood: (id: string) => request<{ day: DayData }>("DELETE", `/nutrition/${id}`),
+  addWater: (date: string, ml: number) => request<{ day: DayData }>("POST", "/water", { date, ml }),
+  undoWater: (date: string) => request<{ day: DayData }>("POST", "/water/undo", { date }),
+  logWeight: (date: string, weightKg: number) => request<{ day: DayData }>("POST", "/weight", { date, weightKg }),
+  deleteWeight: (id: string, date: string) => request<{ day: DayData }>("DELETE", `/weight/${id}?date=${date}`),
+  updateTargets: (date: string, targets: { calories: number; protein: number; waterMl: number }) =>
+    request<{ day: DayData }>("PATCH", "/targets", { ...targets, date }),
+  advice: (date: string) => request<{ advice: string | null }>("POST", "/health/advice", { date }),
   exerciseProgress: (id: number) =>
     request<{ name: string; points: OneRmPoint[] }>("GET", `/progress/exercises/${id}`),
 };
