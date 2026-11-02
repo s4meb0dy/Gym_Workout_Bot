@@ -59,7 +59,14 @@ export async function getExerciseById(exerciseId: number) {
 
 export async function updateExerciseTargets(
   exerciseId: number,
-  data: Partial<{ targetSets: number; targetRepsMin: number; targetRepsMax: number }>,
+  data: Partial<{
+    targetSets: number;
+    targetRepsMin: number;
+    targetRepsMax: number;
+    restTimeInSeconds: number;
+    progressionStep: number;
+    technique: string | null;
+  }>,
 ) {
   return prisma.exercise.update({ where: { id: exerciseId }, data });
 }
@@ -90,9 +97,11 @@ export async function moveExercise(
   const ex = await prisma.exercise.findUnique({ where: { id: exerciseId } });
   if (!ex) return false;
 
+  // Архівні вправи (targetSets = 0) приховані зі списків, тож міняємось лише з активними.
   const neighbor = await prisma.exercise.findFirst({
     where: {
       workoutDayId: ex.workoutDayId,
+      targetSets: { gt: 0 },
       orderIndex: direction === "up" ? { lt: ex.orderIndex } : { gt: ex.orderIndex },
     },
     orderBy: { orderIndex: direction === "up" ? "desc" : "asc" },

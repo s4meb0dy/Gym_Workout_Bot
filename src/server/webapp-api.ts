@@ -6,18 +6,34 @@ import { User } from "@prisma/client";
 import { clearRest, scheduleRest } from "../bot/rest-timer";
 import { prisma } from "../db/client";
 import {
+  getExercisesWithHistory,
+  getOneRmHistory,
+  getWeeklyVolume,
+} from "../services/analytics.service";
+import {
   buildDaysView,
+  buildHistoryDetail,
+  buildHistoryList,
+  buildProgramView,
+  buildWeeklyStats,
   buildWorkoutView,
   findOwnActiveSet,
   nextSetNumber,
 } from "../services/webapp.service";
 import {
+  addExerciseToDay,
   cancelActiveSession,
   completeWorkoutSession,
+  deleteExercise,
+  exerciseHasHistory,
   getActiveSession,
+  getExerciseById,
   getWorkoutDayByNumber,
   logSet,
+  moveExercise,
+  renameExercise,
   startWorkoutSession,
+  updateExerciseTargets,
   updateSet,
 } from "../services/workout.service";
 import { requireWebAppUser } from "./webapp-auth";
@@ -46,6 +62,59 @@ function parseSetBody(body: unknown): { weight: number; reps: number } | null {
     return null;
   }
   return { weight: Math.round(w * 100) / 100, reps: r };
+}
+
+type ExerciseUpdate = {
+  name?: string;
+  targetSets?: number;
+  targetRepsMin?: number;
+  targetRepsMax?: number;
+  restTimeInSeconds?: number;
+  progressionStep?: number;
+  technique?: string | null;
+};
+
+function parseExerciseUpdate(body: unknown): ExerciseUpdate | null {
+  const b = (body ?? {}) as Record<string, unknown>;
+  const out: ExerciseUpdate = {};
+
+  const int = (key: string, min: number, max: number): number | undefined | null => {
+    if (b[key] === undefined) return undefined;
+    const n = Number(b[key]);
+    return Number.isInteger(n) && n >= min && n <= max ? n : null;
+  };
+
+  if (b.name !== undefined) {
+    const name = String(b.name).trim();
+    if (name.length < 2 || name.length > 100) return null;
+    out.name = name;
+  }
+
+  const fields: Array<[keyof ExerciseUpdate, string, number, number]> = [
+    ["targetSets", "targetSets", 1, 10],
+    ["targetRepsMin", "targetRepsMin", 1, 600],
+    ["targetRepsMax", "targetRepsMax", 1, 600],
+    ["restTimeInSeconds", "restSeconds", 0, 600],
+  ];
+  for (const [field, key, min, max] of fields) {
+    const v = int(key, min, max);
+    if (v === null) return null;
+    if (v !== undefined) (out as Record<string, unknown>)[field] = v;
+  }
+
+  if (b.progressionStep !== undefined) {
+    const step = Number(b.progressionStep);
+    if (!Number.isFinite(step) || step <= 0 || step > 50) return null;
+    out.progressionStep = Math.round(step * 100) / 100;
+  }
+
+  if (b.technique !== undefined) {
+    const technique = String(b.technique ?? "").trim();
+    if (technique.length > 1000) return null;
+    out.technique = technique || null;
+  }
+
+  return out;
 }
 
 function notifyRest(user: User, seconds: number): void {
@@ -156,6 +225,125 @@ export function registerWebAppRoutes(app: express.Application): void {
       clearRest(Number(user.telegramId));
       await cancelActiveSession(user.id);
       res.json({ ok: true });
+    }),
+  );
+
+  // ---- Program ----
+
+  api.get(
+    "/program",
+    route(async (_req, res, user) => {
+      res.json({ days: await buildProgramView(user.id) });
+    }),
+  );
+
+  api.patch(
+    "/program/exercises/:id",
+    route(async (req, res, user) => {
+      const exercise = await getExerciseById(Number(req.params.id));
+      const update = parseExerciseUpdate(req.body);
+      if (!exercise || !update) {
+        res.status(400).json({ error: "invalid_exercise" });
+        return;
+      }
+      if (update.name && update.name !== exercise.name) {
+        await renameExercise(exercise.id, update.name);
+      }
+      const { name: _name, ...targets } = update;
+      const min = targets.targetRepsMin ?? exercise.targetRepsMin;
+      const max = targets.targetRepsMax ?? exercise.targetRepsMax;
+      if (min > max) {
+        targets.targetRepsMax = min;
+      }
+      await updateExerciseTargets(exercise.id, targets);
+      res.json({ days: await buildProgramView(user.id) });
+    }),
+  );
+
+  api.post(
+    "/program/exercises/:id/move",
+    route(async (req, res, user) => {
+      const direction = req.body?.direction === "up" ? "up" : "down";
+      await moveExercise(Number(req.params.id), direction);
+      res.json({ days: await buildProgramView(user.id) });
+    }),
+  );
+
+  api.post(
+    "/program/days/:dayNumber/exercises",
+    route(async (req, res, user) => {
+      const day = await getWorkoutDayByNumber(Number(req.params.dayNumber));
+      const name = String(req.body?.name ?? "").trim();
+      if (!day || name.length < 2 || name.length > 100) {
+        res.status(400).json({ error: "invalid_exercise" });
+        return;
+      }
+      const created = await addExerciseToDay(day.id, name);
+      res.json({ days: await buildProgramView(user.id), createdId: created.id });
+    }),
+  );
+
+  api.delete(
+    "/program/exercises/:id",
+    route(async (req, res, user) => {
+      const exercise = await getExerciseById(Number(req.params.id));
+      if (!exercise) {
+        res.status(404).json({ error: "exercise_not_found" });
+        return;
+      }
+      // Вправу з історією не видаляємо, а архівуємо (targetSets = 0), щоб графіки лишились.
+      if (await exerciseHasHistory(exercise.id)) {
+        await updateExerciseTargets(exercise.id, { targetSets: 0 });
+      } else {
+        await deleteExercise(exercise.id);
+      }
+      res.json({ days: await buildProgramView(user.id) });
+    }),
+  );
+
+  // ---- History & progress ----
+
+  api.get(
+    "/history",
+    route(async (_req, res, user) => {
+      res.json({ sessions: await buildHistoryList(user.id) });
+    }),
+  );
+
+  api.get(
+    "/history/:id",
+    route(async (req, res, user) => {
+      const detail = await buildHistoryDetail(user.id, String(req.params.id));
+      if (!detail) {
+        res.status(404).json({ error: "session_not_found" });
+        return;
+      }
+      res.json({ session: detail });
+    }),
+  );
+
+  api.get(
+    "/progress",
+    route(async (_req, res, user) => {
+      const [weeks, volume, exercises] = await Promise.all([
+        buildWeeklyStats(user.id),
+        getWeeklyVolume(user.id, 7),
+        getExercisesWithHistory(user.id),
+      ]);
+      res.json({ weeks, volume, exercises });
+    }),
+  );
+
+  api.get(
+    "/progress/exercises/:id",
+    route(async (req, res, user) => {
+      const exercise = await getExerciseById(Number(req.params.id));
+      if (!exercise) {
+        res.status(404).json({ error: "exercise_not_found" });
+        return;
+      }
+      const points = await getOneRmHistory(user.id, exercise.id);
+      res.json({ name: exercise.name, points });
     }),
   );
 

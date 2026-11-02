@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api, ExerciseView, SetView, Summary, WorkoutView } from "./api";
+import { Stepper } from "./components";
 import { fmtClock, fmtSets, fmtTarget, fmtWeight, isDone, unitLabel } from "./format";
 import { confirmAction, haptic } from "./telegram";
 
@@ -34,43 +35,6 @@ function defaultInputs(ex: ExerciseView): { weight: number; reps: number } {
     weight: ex.suggestedWeight,
     reps: ex.shouldIncrease || !lastReps ? ex.targetRepsMin : lastReps,
   };
-}
-
-interface StepperProps {
-  value: number;
-  step: number;
-  unit: string;
-  onChange: (value: number) => void;
-}
-
-function Stepper({ value, step, unit, onChange }: StepperProps) {
-  const change = (delta: number) => {
-    haptic.tap();
-    onChange(Math.max(0, Math.round((value + delta) * 100) / 100));
-  };
-  return (
-    <div className="stepper">
-      <button className="step-btn" aria-label="Менше" onClick={() => change(-step)}>
-        −
-      </button>
-      <div className="step-value">
-        <input
-          type="number"
-          inputMode="decimal"
-          value={Number.isFinite(value) ? value : 0}
-          onFocus={(e) => e.target.select()}
-          onChange={(e) => {
-            const n = parseFloat(e.target.value.replace(",", "."));
-            onChange(Number.isFinite(n) && n >= 0 ? n : 0);
-          }}
-        />
-        <div className="step-unit">{unit}</div>
-      </div>
-      <button className="step-btn" aria-label="Більше" onClick={() => change(step)}>
-        +
-      </button>
-    </div>
-  );
 }
 
 export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {

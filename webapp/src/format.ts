@@ -46,6 +46,20 @@ export function shortWeekday(weekday: string): string {
   return SHORT_WEEKDAYS[weekday] ?? weekday.slice(0, 2);
 }
 
+export function fmtDate(iso: string, opts: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" }): string {
+  return new Date(iso).toLocaleDateString("uk-UA", opts);
+}
+
+export function fmtNumber(n: number): string {
+  return Math.round(n).toLocaleString("uk-UA");
+}
+
+export function fmtRest(seconds: number): string {
+  if (seconds <= 0) return "без відпочинку";
+  if (seconds < 60) return `${seconds} с`;
+  return seconds % 60 === 0 ? `${seconds / 60} хв` : `${Math.floor(seconds / 60)} хв ${seconds % 60} с`;
+}
+
 export function isDone(ex: ExerciseView): boolean {
   return ex.sets.length >= ex.targetSets;
 }

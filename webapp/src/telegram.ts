@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+
 interface TelegramWebApp {
   initData: string;
   ready(): void;
@@ -29,6 +31,20 @@ export function initTelegram(background: string): void {
   tg.disableVerticalSwipes?.();
   tg.setHeaderColor(background);
   tg.setBackgroundColor(background);
+}
+
+/** Нативна кнопка «Назад» Telegram для вкладених екранів. */
+export function useBackButton(onBack: (() => void) | null): void {
+  useEffect(() => {
+    const button = tg?.BackButton;
+    if (!button || !onBack) return;
+    button.show();
+    button.onClick(onBack);
+    return () => {
+      button.offClick(onBack);
+      button.hide();
+    };
+  }, [onBack]);
 }
 
 export const haptic = {

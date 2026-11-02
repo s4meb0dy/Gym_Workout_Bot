@@ -50,6 +50,73 @@ export interface Summary {
   records: Array<{ exerciseName: string; weight: number; reps: number }>;
 }
 
+export interface ProgramExercise {
+  id: number;
+  name: string;
+  block: string;
+  type: "reps" | "time" | "warmup";
+  progressionMode: "weight" | "assist";
+  progressionStep: number;
+  targetSets: number;
+  targetRepsMin: number;
+  targetRepsMax: number;
+  restSeconds: number;
+  technique: string | null;
+  muscleGroup: string;
+  workingWeight: number | null;
+  nextWeight: number | null;
+  hasHistory: boolean;
+}
+
+export interface ProgramDay {
+  dayNumber: number;
+  weekday: string;
+  name: string;
+  exercises: ProgramExercise[];
+}
+
+export interface ExerciseUpdate {
+  name?: string;
+  targetSets?: number;
+  targetRepsMin?: number;
+  targetRepsMax?: number;
+  restSeconds?: number;
+  progressionStep?: number;
+  technique?: string;
+}
+
+export interface HistoryItem {
+  id: string;
+  completedAt: string;
+  dayName: string;
+  weekday: string;
+  durationMinutes: number;
+  sets: number;
+  tonnage: number;
+}
+
+export interface HistoryDetail {
+  id: string;
+  completedAt: string;
+  dayName: string;
+  durationMinutes: number;
+  tonnage: number;
+  exercises: Array<{ exerciseId: number; name: string; sets: Array<{ weight: number; reps: number }> }>;
+}
+
+export interface ProgressData {
+  weeks: Array<{ weekStart: string; workouts: number; sets: number; tonnage: number }>;
+  volume: Array<{ muscleGroup: string; sets: number; tonnage: number }>;
+  exercises: Array<{ exerciseId: number; name: string; sessions: number }>;
+}
+
+export interface OneRmPoint {
+  date: string;
+  oneRm: number;
+  bestWeight: number;
+  bestReps: number;
+}
+
 async function request<T>(method: string, path: string, body?: unknown): Promise<T> {
   const headers: Record<string, string> = {};
   if (tg?.initData) headers.Authorization = `tma ${tg.initData}`;
@@ -78,4 +145,19 @@ export const api = {
   cancelRest: () => request<{ ok: true }>("POST", "/workout/rest/cancel"),
   finish: () => request<{ summary: Summary }>("POST", "/workout/finish"),
   cancel: () => request<{ ok: true }>("POST", "/workout/cancel"),
+
+  program: () => request<{ days: ProgramDay[] }>("GET", "/program"),
+  updateExercise: (id: number, update: ExerciseUpdate) =>
+    request<{ days: ProgramDay[] }>("PATCH", `/program/exercises/${id}`, update),
+  moveExercise: (id: number, direction: "up" | "down") =>
+    request<{ days: ProgramDay[] }>("POST", `/program/exercises/${id}/move`, { direction }),
+  addExercise: (dayNumber: number, name: string) =>
+    request<{ days: ProgramDay[]; createdId: number }>("POST", `/program/days/${dayNumber}/exercises`, { name }),
+  removeExercise: (id: number) => request<{ days: ProgramDay[] }>("DELETE", `/program/exercises/${id}`),
+
+  history: () => request<{ sessions: HistoryItem[] }>("GET", "/history"),
+  historyDetail: (id: string) => request<{ session: HistoryDetail }>("GET", `/history/${id}`),
+  progress: () => request<ProgressData>("GET", "/progress"),
+  exerciseProgress: (id: number) =>
+    request<{ name: string; points: OneRmPoint[] }>("GET", `/progress/exercises/${id}`),
 };
