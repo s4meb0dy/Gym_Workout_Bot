@@ -119,7 +119,12 @@ cloudflared і ставить її на кнопку меню «Тренуван
 
 Адреса тунелю змінюється після його рестарту — бот підхоплює нову протягом ~2 хв.
 
-### Постійна адреса (Caddy + sslip.io, безкоштовно)
+### Постійна адреса (Caddy + DuckDNS, безкоштовно)
+
+Зараз бот живе на **https://s4meb0dygym.duckdns.org** (DuckDNS → 193.123.37.20),
+запасна адреса — `193-123-37-20.sslip.io`. Обидві обслуговує один блок у Caddyfile:
+`s4meb0dygym.duckdns.org, 193-123-37-20.sslip.io { reverse_proxy localhost:3000 }`.
+Якщо зміниться IP VM — онови його на duckdns.org, сервер чіпати не треба.
 
 Потрібна для синхронізації Apple Health / Fitbit через iOS Shortcuts, бо шорткат
 має знати незмінну адресу.
@@ -137,8 +142,8 @@ cloudflared і ставить її на кнопку меню «Тренуван
    	reverse_proxy localhost:3000
    }
    ```
-4. У `.env`: `WEBAPP_URL=https://193-123-37-20.sslip.io/app/` і
-   `APP_URL=https://193-123-37-20.sslip.io`, прибрати `TUNNEL_METRICS_URL`,
+4. У `.env`: `WEBAPP_URL=https://s4meb0dygym.duckdns.org/app/` і
+   `APP_URL=https://s4meb0dygym.duckdns.org`, прибрати `TUNNEL_METRICS_URL`,
    потім `bash deploy/setup.sh` — тимчасовий тунель зупиниться сам.
 
 Локальна розробка інтерфейсу: `BOT_DISABLED=true` + `WEBAPP_DEV_USER_ID=<id>` у `.env`,
