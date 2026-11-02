@@ -54,6 +54,12 @@ export const config = {
   keepAliveMinutes: Number(process.env.KEEPALIVE_MINUTES ?? 10),
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash",
+  // Mini App: фіксована адреса або метрики cloudflared, з яких береться адреса quick tunnel.
+  webappUrl: process.env.WEBAPP_URL?.trim() || "",
+  tunnelMetricsUrl: process.env.TUNNEL_METRICS_URL?.trim() || "",
+  // Лише для локальної розробки: API без Telegram, бот не запускається.
+  botDisabled: (process.env.BOT_DISABLED ?? "false").trim() === "true",
+  webappDevUserId: process.env.NODE_ENV === "production" ? null : parseOwnerId(process.env.WEBAPP_DEV_USER_ID),
 };
 
 /** Бот особистий: якщо OWNER_TELEGRAM_ID задано, усі інші користувачі ігноруються. */

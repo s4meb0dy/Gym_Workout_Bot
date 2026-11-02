@@ -1,4 +1,4 @@
-import { Bot, Context, session, SessionFlavor } from "grammy";
+import { Bot, Context, InlineKeyboard, session, SessionFlavor } from "grammy";
 import { User } from "@prisma/client";
 import { config, isAllowedUser } from "../config/env";
 import { findOrCreateUser } from "../services/workout.service";
@@ -16,6 +16,7 @@ import { registerEditProgramHandlers } from "./handlers/editprogram";
 import { registerHealthHandlers } from "./handlers/health";
 import { registerConfirmHandlers } from "./confirm";
 import { mainMenuKeyboard } from "./keyboards";
+import { getWebAppUrl, startWebAppMenuButton } from "./webapp-button";
 
 export interface SessionData {
   awaitingSetInput: boolean;
@@ -97,6 +98,17 @@ export function createBot(): Bot<BotContext> {
     );
   });
 
+  bot.command("app", async (ctx) => {
+    const url = getWebAppUrl();
+    if (!url) {
+      await ctx.reply("Застосунок поки недоступний — сервер ще не отримав адресу.");
+      return;
+    }
+    await ctx.reply("📱 Тренування в застосунку:", {
+      reply_markup: new InlineKeyboard().webApp("Відкрити", url),
+    });
+  });
+
   registerMenuHandlers(bot);
   registerTrackingHandlers(bot);
   registerFoodHandlers(bot);
@@ -144,6 +156,7 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
 
   await bot.api.setMyCommands([
     { command: "start", description: "Головне меню" },
+    { command: "app", description: "Відкрити застосунок" },
     { command: "workout", description: "Розпочати тренування" },
     { command: "program", description: "Моя програма" },
     { command: "stats", description: "Статистика" },
@@ -161,6 +174,8 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
     { command: "backup", description: "Бекап бази даних" },
     { command: "export", description: "Експорт історії у CSV" },
   ]);
+
+  startWebAppMenuButton(bot.api);
 
   bot.start({
     onStart: (botInfo) => {

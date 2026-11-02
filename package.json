@@ -4,10 +4,11 @@
   "description": "Telegram bot for strength training tracking with automatic weight progression",
   "main": "dist/index.js",
   "scripts": {
-    "build": "tsc",
+    "build": "tsc && npm --prefix webapp run build",
     "start": "node dist/index.js",
     "dev": "tsx watch src/index.ts",
-    "postinstall": "prisma generate",
+    "dev:webapp": "npm --prefix webapp run dev",
+    "postinstall": "prisma generate && npm --prefix webapp install --no-audit --no-fund",
     "db:migrate": "prisma migrate dev",
     "db:push": "prisma db push",
     "db:seed": "tsx prisma/seed.ts",

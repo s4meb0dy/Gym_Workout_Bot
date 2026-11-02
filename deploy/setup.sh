@@ -89,6 +89,36 @@ pm2 delete "${APP_NAME}" >/dev/null 2>&1 || true
 pm2 start dist/index.js --name "${APP_NAME}" --time
 pm2 save
 
+# --- Cloudflare quick tunnel (HTTPS for the Telegram Mini App) ----------
+# Gives https://*.trycloudflare.com without opening ports. The bot reads the
+# current hostname from cloudflared metrics and updates its menu button.
+TUNNEL_NAME="gym-tunnel"
+TUNNEL_METRICS="127.0.0.1:20241"
+
+if ! command -v cloudflared >/dev/null 2>&1; then
+  case "$(uname -m)" in
+    aarch64|arm64) cf_arch="arm64" ;;
+    *) cf_arch="amd64" ;;
+  esac
+  echo "==> Installing cloudflared (${cf_arch})"
+  curl -fsSL -o /tmp/cloudflared.deb \
+    "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${cf_arch}.deb"
+  sudo dpkg -i /tmp/cloudflared.deb
+  rm -f /tmp/cloudflared.deb
+fi
+
+if ! grep -q '^TUNNEL_METRICS_URL=' .env && ! grep -q '^WEBAPP_URL=' .env; then
+  echo "TUNNEL_METRICS_URL=http://${TUNNEL_METRICS}" >> .env
+fi
+
+# Restarting the tunnel changes its address, so leave a running one alone.
+if ! pm2 describe "${TUNNEL_NAME}" >/dev/null 2>&1; then
+  echo "==> Starting Cloudflare tunnel under pm2 as '${TUNNEL_NAME}'"
+  pm2 start cloudflared --name "${TUNNEL_NAME}" --time -- \
+    tunnel --no-autoupdate --metrics "${TUNNEL_METRICS}" --url "http://localhost:3000"
+fi
+pm2 save
+
 echo "==> Enabling pm2 startup on reboot"
 startup_cmd="$(pm2 startup systemd -u "$USER" --hp "$HOME" | grep -E '^sudo ' || true)"
 if [ -n "${startup_cmd}" ]; then

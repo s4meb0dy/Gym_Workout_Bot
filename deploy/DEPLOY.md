@@ -111,6 +111,18 @@ bash deploy/setup.sh
 
 ---
 
+## Mini App (застосунок у Telegram)
+
+`setup.sh` ставить **cloudflared** і запускає quick tunnel під pm2 як `gym-tunnel` — він дає
+HTTPS-адресу `*.trycloudflare.com` без відкриття портів. Бот сам читає цю адресу з метрик
+cloudflared і ставить її на кнопку меню «Тренування» (а також команда `/app`).
+
+Адреса тунелю змінюється після його рестарту — бот підхоплює нову протягом ~2 хв.
+Щоб мати постійну адресу, задай `WEBAPP_URL=https://твій-домен/app/` у `.env`.
+
+Локальна розробка інтерфейсу: `BOT_DISABLED=true` + `WEBAPP_DEV_USER_ID=<id>` у `.env`,
+`npm run dev`, і в другому терміналі `npm run dev:webapp` (http://localhost:5173/app/).
+
 ## Керування ботом
 
 ```bash

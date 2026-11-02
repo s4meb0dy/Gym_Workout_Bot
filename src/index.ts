@@ -1,17 +1,26 @@
 import { createBot, startBot } from "./bot/bot";
 import { createServer, startServer } from "./server/express";
 import { setHealthSyncBot } from "./server/health-sync";
+import { setWebAppBotApi } from "./server/webapp-api";
 import { startScheduler } from "./scheduler/scheduler";
 import { startKeepAlive, stopKeepAlive } from "./server/keepalive";
+import { config } from "./config/env";
 import { prisma } from "./db/client";
 
 async function main() {
   const app = createServer();
   startServer(app);
+
+  if (config.botDisabled) {
+    console.log("BOT_DISABLED=true — only the HTTP server is running (local Mini App dev).");
+    return;
+  }
+
   startKeepAlive();
 
   const bot = createBot();
   setHealthSyncBot(bot);
+  setWebAppBotApi(bot.api);
   startScheduler(bot);
 
   const shutdown = async (signal: string) => {

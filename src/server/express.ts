@@ -1,11 +1,13 @@
 import express from "express";
 import { config } from "../config/env";
 import { registerHealthSyncRoutes } from "./health-sync";
+import { registerWebAppRoutes } from "./webapp-api";
 
 export function createServer(): express.Application {
   const app = express();
 
   registerHealthSyncRoutes(app);
+  registerWebAppRoutes(app);
 
   app.get(["/healthcheck", "/health"], (_req, res) => {
     res.status(200).send("OK");

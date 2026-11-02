@@ -2,6 +2,7 @@ import { Bot, GrammyError, InlineKeyboard } from "grammy";
 import { Exercise } from "@prisma/client";
 import { BotContext } from "../bot";
 import { askConfirm } from "../confirm";
+import { clearRest, scheduleRest } from "../rest-timer";
 import {
   editCancelKeyboard,
   editSetListKeyboard,
@@ -94,37 +95,10 @@ function candidateWeight(exercise: Exercise, progression: ProgressionResult): nu
 
 // ---- Rest timer ----
 
-const restTimers = new Map<number, NodeJS.Timeout>();
-
-export function clearRest(chatId: number): void {
-  const timer = restTimers.get(chatId);
-  if (timer) {
-    clearTimeout(timer);
-    restTimers.delete(chatId);
-  }
-}
-
 function startRestTimer(ctx: BotContext, seconds: number): void {
-  if (!ctx.chat || seconds <= 0) {
-    return;
+  if (ctx.chat) {
+    scheduleRest(ctx.api, ctx.chat.id, seconds);
   }
-
-  const chatId = ctx.chat.id;
-  clearRest(chatId);
-
-  restTimers.set(
-    chatId,
-    setTimeout(() => {
-      restTimers.delete(chatId);
-      // Нове повідомлення (а не редагування) — щоб прилетів push на телефон.
-      ctx.api
-        .sendMessage(
-          chatId,
-          `🔔 Відпочинок ${formatRestDuration(seconds)} завершено — вперед на наступний підхід!`,
-        )
-        .catch(() => undefined);
-    }, seconds * 1000),
-  );
 }
 
 // ---- Live card ----
