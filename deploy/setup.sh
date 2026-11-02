@@ -84,11 +84,6 @@ if ! command -v pm2 >/dev/null 2>&1; then
   sudo npm install -g pm2
 fi
 
-echo "==> (Re)starting bot under pm2 as '${APP_NAME}'"
-pm2 delete "${APP_NAME}" >/dev/null 2>&1 || true
-pm2 start dist/index.js --name "${APP_NAME}" --time
-pm2 save
-
 # --- Cloudflare quick tunnel (HTTPS for the Telegram Mini App) ----------
 # Gives https://*.trycloudflare.com without opening ports. The bot reads the
 # current hostname from cloudflared metrics and updates its menu button.
@@ -117,6 +112,11 @@ if ! pm2 describe "${TUNNEL_NAME}" >/dev/null 2>&1; then
   pm2 start cloudflared --name "${TUNNEL_NAME}" --time -- \
     tunnel --no-autoupdate --metrics "${TUNNEL_METRICS}" --url "http://localhost:3000"
 fi
+
+# The bot starts after .env has the tunnel settings.
+echo "==> (Re)starting bot under pm2 as '${APP_NAME}'"
+pm2 delete "${APP_NAME}" >/dev/null 2>&1 || true
+pm2 start dist/index.js --name "${APP_NAME}" --time
 pm2 save
 
 echo "==> Enabling pm2 startup on reboot"

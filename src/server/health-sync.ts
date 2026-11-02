@@ -87,13 +87,13 @@ function parseSyncBody(body: Record<string, unknown>): {
 export function registerHealthSyncRoutes(app: express.Application): void {
   app.post("/api/health/sync", express.json({ limit: "32kb" }), async (req, res) => {
     try {
-      const parsed = parseSyncBody(req.body as Record<string, unknown>);
+      const parsed = parseSyncBody((req.body ?? {}) as Record<string, unknown>);
       if (!parsed) {
         res.status(400).json({ ok: false, error: "Invalid payload" });
         return;
       }
 
-      const body = req.body as Record<string, unknown>;
+      const body = (req.body ?? {}) as Record<string, unknown>;
       const rawActive = body.activeCalories ?? body.activeCal ?? body.ActiveCal;
       if (rawActive != null && rawActive !== "" && parsed.metrics.activeCalories == null) {
         console.warn("Health sync: activeCalories rejected", {
