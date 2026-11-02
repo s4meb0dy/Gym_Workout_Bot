@@ -1,7 +1,7 @@
 import cron from "node-cron";
 import { Bot } from "grammy";
 import { BotContext } from "../bot/bot";
-import { config } from "../config/env";
+import { config, isAllowedUser } from "../config/env";
 import {
   getActiveReminderSettings,
   getProteinForDate,
@@ -52,6 +52,10 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
   const settings = await getActiveReminderSettings();
 
   for (const setting of settings) {
+    if (!isAllowedUser(setting.user.telegramId)) {
+      continue;
+    }
+
     const chatId = Number(setting.chatId);
 
     try {

@@ -193,15 +193,6 @@ export function backToMenuKeyboard() {
   return new InlineKeyboard().text("🏠 Головне меню", "back_to_menu");
 }
 
-export function foodConfirmKeyboard() {
-  return new InlineKeyboard()
-    .text("✅ Записати", "food_log")
-    .row()
-    .text("✏️ Ввести КБЖВ вручну", "food_edit")
-    .row()
-    .text("❌ Скасувати", "food_cancel");
-}
-
 export function editProgramDayKeyboard(days: DayButtonInfo[]) {
   const keyboard = new InlineKeyboard();
   days.forEach((day, index) => {

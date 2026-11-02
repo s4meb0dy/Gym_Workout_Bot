@@ -31,8 +31,20 @@ function validateBotToken(token: string): string {
   return token;
 }
 
+function parseOwnerId(raw: string | undefined): bigint | null {
+  const value = raw?.trim();
+  if (!value) {
+    return null;
+  }
+  if (!/^\d+$/.test(value)) {
+    throw new Error("OWNER_TELEGRAM_ID must be a numeric Telegram user id (get it from @userinfobot)");
+  }
+  return BigInt(value);
+}
+
 export const config = {
   botToken: validateBotToken(requireEnv("BOT_TOKEN")),
+  ownerTelegramId: parseOwnerId(process.env.OWNER_TELEGRAM_ID),
   port: Number(process.env.PORT ?? 3000),
   restSeconds: Number(process.env.REST_SECONDS ?? 90),
   timezone: process.env.TZ_NAME?.trim() || "Europe/Brussels",
@@ -43,6 +55,11 @@ export const config = {
   geminiApiKey: process.env.GEMINI_API_KEY?.trim() || "",
   geminiModel: process.env.GEMINI_MODEL?.trim() || "gemini-3.5-flash",
 };
+
+/** Бот особистий: якщо OWNER_TELEGRAM_ID задано, усі інші користувачі ігноруються. */
+export function isAllowedUser(telegramId: number | bigint): boolean {
+  return config.ownerTelegramId == null || BigInt(telegramId) === config.ownerTelegramId;
+}
 
 export function getPublicAppUrl(): string {
   if (config.appUrl) {

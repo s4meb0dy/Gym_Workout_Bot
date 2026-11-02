@@ -28,6 +28,7 @@ copy .env.example .env
 
 ```env
 BOT_TOKEN=123456789:ABCdefGHIjklMNOpqrsTUVwxyz
+OWNER_TELEGRAM_ID=123456789   # твій id від @userinfobot — бот особистий, інших ігнорує
 PORT=3000
 DATABASE_URL="file:./dev.db"
 ```

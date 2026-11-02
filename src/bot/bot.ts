@@ -1,6 +1,6 @@
 import { Bot, Context, session, SessionFlavor } from "grammy";
 import { User } from "@prisma/client";
-import { config } from "../config/env";
+import { config, isAllowedUser } from "../config/env";
 import { findOrCreateUser } from "../services/workout.service";
 import { registerMenuHandlers } from "./handlers/menu";
 import { registerProgramHandlers } from "./handlers/program";
@@ -16,14 +16,6 @@ import { registerEditProgramHandlers } from "./handlers/editprogram";
 import { registerHealthHandlers } from "./handlers/health";
 import { registerConfirmHandlers } from "./confirm";
 import { mainMenuKeyboard } from "./keyboards";
-
-export interface PendingFood {
-  calories: number;
-  protein: number;
-  fat: number;
-  carbs: number;
-  label: string;
-}
 
 export interface SessionData {
   awaitingSetInput: boolean;
@@ -44,7 +36,6 @@ export interface SessionData {
   postponedExerciseIds?: number[];
   skippedExerciseIds?: number[];
   editProgram?: { mode: "rename" | "add"; dayNumber: number; exerciseId?: number } | null;
-  pendingFood?: PendingFood | null;
 }
 
 export interface UserFlavor {
@@ -70,13 +61,17 @@ export function createBot(): Bot<BotContext> {
         postponedExerciseIds: [],
         skippedExerciseIds: [],
         editProgram: null,
-        pendingFood: null,
       }),
     }),
   );
 
   bot.use(async (ctx, next) => {
     if (!ctx.from) {
+      return;
+    }
+
+    if (!isAllowedUser(ctx.from.id)) {
+      console.warn(`Ignored update from non-owner ${ctx.from.id} (@${ctx.from.username ?? "-"})`);
       return;
     }
 
@@ -141,6 +136,12 @@ async function assertBotTokenValid(bot: Bot<BotContext>): Promise<void> {
 export async function startBot(bot: Bot<BotContext>): Promise<void> {
   await assertBotTokenValid(bot);
 
+  if (config.ownerTelegramId == null) {
+    console.warn(
+      "⚠️ OWNER_TELEGRAM_ID is not set — the bot answers anyone, including /backup with the whole database.",
+    );
+  }
+
   await bot.api.setMyCommands([
     { command: "start", description: "Головне меню" },
     { command: "workout", description: "Розпочати тренування" },
@@ -149,7 +150,7 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
     { command: "weight", description: "Записати вагу тіла" },
     { command: "protein", description: "Додати білок за сьогодні" },
     { command: "water", description: "Трекінг води" },
-    { command: "food", description: "КБЖВ за фото / підсумок дня" },
+    { command: "food", description: "КБЖВ / підсумок дня" },
     { command: "watch", description: "Apple Watch / поради здоров'я" },
     { command: "volume", description: "Обсяг по м'язах за тиждень" },
     { command: "progress", description: "Графік прогресу вправи" },

@@ -83,6 +83,7 @@ nano .env
 
 ```env
 BOT_TOKEN=твій_токен_від_BotFather
+OWNER_TELEGRAM_ID=твій_telegram_id   # дізнатись: @userinfobot; інших бот ігнорує
 GEMINI_API_KEY=твій_ключ_Gemini
 GEMINI_MODEL=gemini-3.5-flash
 DATABASE_URL="file:./dev.db"
