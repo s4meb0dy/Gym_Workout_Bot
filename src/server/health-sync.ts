@@ -51,6 +51,18 @@ function numFromBody(
   return undefined;
 }
 
+/**
+ * Shortcuts віддає тривалість сну в різних одиницях залежно від дії: години (7.5),
+ * хвилини (450) або секунди (27000). Ніч не буває довшою за 20 год, тож одиниця
+ * однозначно визначається за величиною.
+ */
+function normalizeSleepMinutes(value: number | undefined): number | undefined {
+  if (value == null) return undefined;
+  if (value <= 20) return value * 60;
+  if (value > 1200) return value / 60;
+  return value;
+}
+
 function parseSyncBody(body: Record<string, unknown>): {
   token: string;
   date: string;
@@ -65,10 +77,10 @@ function parseSyncBody(body: Record<string, unknown>): {
       : localDateString();
 
   const metrics = sanitizeHealthMetrics({
-    sleepMinutes: numFromBody(body, ["sleepMinutes", "sleepMin"]),
+    sleepMinutes: normalizeSleepMinutes(numFromBody(body, ["sleepMinutes", "sleepMin", "sleep"], "sum")),
     restingHr: numFromBody(body, ["restingHr", "restingHR", "RestingHR", "resting_hr"]),
     hrv: numFromBody(body, ["hrv", "HRV"]),
-    steps: numFromBody(body, ["steps", "Steps"]),
+    steps: numFromBody(body, ["steps", "Steps"], "sum"),
     activeCalories: numFromBody(
       body,
       ["activeCalories", "activeCal", "ActiveCal", "active_calories"],
