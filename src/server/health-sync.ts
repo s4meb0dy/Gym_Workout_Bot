@@ -101,6 +101,9 @@ export function registerHealthSyncRoutes(app: express.Application): void {
     try {
       const parsed = parseSyncBody((req.body ?? {}) as Record<string, unknown>);
       if (!parsed) {
+        // Для діагностики шорткатів: що саме прийшло (без токена).
+        const { token: _token, ...rest } = (req.body ?? {}) as Record<string, unknown>;
+        console.warn("Health sync: invalid payload", JSON.stringify(rest).slice(0, 1000));
         res.status(400).json({ ok: false, error: "Invalid payload" });
         return;
       }
