@@ -118,7 +118,28 @@ HTTPS-адресу `*.trycloudflare.com` без відкриття портів.
 cloudflared і ставить її на кнопку меню «Тренування» (а також команда `/app`).
 
 Адреса тунелю змінюється після його рестарту — бот підхоплює нову протягом ~2 хв.
-Щоб мати постійну адресу, задай `WEBAPP_URL=https://твій-домен/app/` у `.env`.
+
+### Постійна адреса (Caddy + sslip.io, безкоштовно)
+
+Потрібна для синхронізації Apple Health / Fitbit через iOS Shortcuts, бо шорткат
+має знати незмінну адресу.
+
+1. OCI Console → Subnet → Security List → Ingress: TCP **80** і **443** з `0.0.0.0/0`.
+2. Файрвол VM (Ubuntu-образи Oracle блокують усе, крім 22):
+   ```bash
+   sudo iptables -I INPUT 5 -m state --state NEW -p tcp --dport 443 -j ACCEPT
+   sudo iptables -I INPUT 5 -m state --state NEW -p tcp --dport 80 -j ACCEPT
+   sudo netfilter-persistent save
+   ```
+3. Caddy (сам отримує сертифікат Let's Encrypt), `/etc/caddy/Caddyfile`:
+   ```
+   193-123-37-20.sslip.io {
+   	reverse_proxy localhost:3000
+   }
+   ```
+4. У `.env`: `WEBAPP_URL=https://193-123-37-20.sslip.io/app/` і
+   `APP_URL=https://193-123-37-20.sslip.io`, прибрати `TUNNEL_METRICS_URL`,
+   потім `bash deploy/setup.sh` — тимчасовий тунель зупиниться сам.
 
 Локальна розробка інтерфейсу: `BOT_DISABLED=true` + `WEBAPP_DEV_USER_ID=<id>` у `.env`,
 `npm run dev`, і в другому терміналі `npm run dev:webapp` (http://localhost:5173/app/).

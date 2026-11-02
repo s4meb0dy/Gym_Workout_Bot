@@ -87,8 +87,17 @@ fi
 # --- Cloudflare quick tunnel (HTTPS for the Telegram Mini App) ----------
 # Gives https://*.trycloudflare.com without opening ports. The bot reads the
 # current hostname from cloudflared metrics and updates its menu button.
+# With a permanent WEBAPP_URL in .env (e.g. Caddy, see DEPLOY.md) the tunnel
+# is not needed and gets stopped.
 TUNNEL_NAME="gym-tunnel"
 TUNNEL_METRICS="127.0.0.1:20241"
+
+if grep -q '^WEBAPP_URL=.\+' .env; then
+  if pm2 describe "${TUNNEL_NAME}" >/dev/null 2>&1; then
+    echo "==> WEBAPP_URL is set — removing the temporary Cloudflare tunnel"
+    pm2 delete "${TUNNEL_NAME}" >/dev/null
+  fi
+else
 
 if ! command -v cloudflared >/dev/null 2>&1; then
   case "$(uname -m)" in
@@ -111,6 +120,8 @@ if ! pm2 describe "${TUNNEL_NAME}" >/dev/null 2>&1; then
   echo "==> Starting Cloudflare tunnel under pm2 as '${TUNNEL_NAME}'"
   pm2 start cloudflared --name "${TUNNEL_NAME}" --time -- \
     tunnel --no-autoupdate --metrics "${TUNNEL_METRICS}" --url "http://localhost:3000"
+fi
+
 fi
 
 # The bot starts after .env has the tunnel settings.
