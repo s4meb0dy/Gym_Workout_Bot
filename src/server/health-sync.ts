@@ -108,14 +108,9 @@ export function registerHealthSyncRoutes(app: express.Application): void {
         return;
       }
 
-      const body = (req.body ?? {}) as Record<string, unknown>;
-      const rawActive = body.activeCalories ?? body.activeCal ?? body.ActiveCal;
-      if (rawActive != null && rawActive !== "" && parsed.metrics.activeCalories == null) {
-        console.warn("Health sync: activeCalories rejected", {
-          raw: rawActive,
-          keys: Object.keys(body).filter((k) => k !== "token"),
-        });
-      }
+      // Що надіслав шорткат і що з цього прийнято — без токена, для діагностики.
+      const { token: _token, ...raw } = (req.body ?? {}) as Record<string, unknown>;
+      console.log("Health sync:", JSON.stringify(raw).slice(0, 500), "→", JSON.stringify(parsed.metrics));
 
       const user = await findUserByHealthToken(parsed.token);
       if (!user) {
