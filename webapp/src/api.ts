@@ -158,7 +158,8 @@ export type Energy =
 export interface DayData {
   date: string;
   isToday: boolean;
-  targets: { calories: number; protein: number; waterMl: number };
+  targets: { calories: number; protein: number; fat: number; carbs: number; waterMl: number };
+  recommendedSplit: { calories: number; protein: number; fat: number; carbs: number } | null;
   macros: Macros;
   entries: FoodEntry[];
   previousEntries: FoodEntry[];
@@ -230,7 +231,10 @@ export const api = {
   undoWater: (date: string) => request<{ day: DayData }>("POST", "/water/undo", { date }),
   logWeight: (date: string, weightKg: number) => request<{ day: DayData }>("POST", "/weight", { date, weightKg }),
   deleteWeight: (id: string, date: string) => request<{ day: DayData }>("DELETE", `/weight/${id}?date=${date}`),
-  updateTargets: (date: string, targets: { calories: number; protein: number; waterMl: number }) =>
+  updateTargets: (
+    date: string,
+    targets: { calories: number; protein: number; waterMl: number; fat?: number; carbs?: number },
+  ) =>
     request<{ day: DayData }>("PATCH", "/targets", { ...targets, date }),
   updateProfile: (date: string, profile: { heightCm: number | null; goal: Goal; weighInReminder: boolean }) =>
     request<{ day: DayData }>("PATCH", "/profile", { ...profile, date }),

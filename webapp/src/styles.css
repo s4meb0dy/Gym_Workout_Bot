@@ -326,6 +326,8 @@ input[type="number"] { -moz-appearance: textfield; }
 .macro-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-top: 8px; }
 .macro-grid label { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 
+.macro-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 12px; }
+
 .metric-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px 8px; }
 
 .tab span { white-space: nowrap; }

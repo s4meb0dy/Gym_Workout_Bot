@@ -90,6 +90,8 @@ model ReminderSetting {
   proteinHour        Int     @default(20)
   proteinTarget      Int     @default(150)
   calorieTarget      Int     @default(2300)
+  fatTarget          Int     @default(70)
+  carbsTarget        Int     @default(300)
   backupEnabled      Boolean @default(true)
   digestEnabled      Boolean @default(true)
   supplementsEnabled Boolean @default(true)

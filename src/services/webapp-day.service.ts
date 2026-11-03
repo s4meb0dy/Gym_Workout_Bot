@@ -1,7 +1,7 @@
 import { prisma } from "../db/client";
 import { generateHealthAdvice } from "./health-coach.service";
 import { buildHealthContext, getHealthLog } from "./health.service";
-import { estimateEnergy, parseGoal } from "./energy.service";
+import { estimateEnergy, macroSplit, parseGoal } from "./energy.service";
 import {
   getCalorieTarget,
   getMacrosForDate,
@@ -85,7 +85,17 @@ export async function buildDayView(userId: string, date: string) {
   return {
     date,
     isToday: date === localDateString(),
-    targets: { calories: calorieTarget, protein: proteinTarget, waterMl: waterTarget },
+    targets: {
+      calories: calorieTarget,
+      protein: proteinTarget,
+      fat: reminder?.fatTarget ?? 70,
+      carbs: reminder?.carbsTarget ?? 300,
+      waterMl: waterTarget,
+    },
+    // Рекомендований розподіл БЖВ під поточну ціль калорій і останню вагу.
+    recommendedSplit: weight.points.length
+      ? macroSplit(calorieTarget, weight.points[weight.points.length - 1].weightKg, parseGoal(user?.goal))
+      : null,
     macros,
     entries: entries.map(toView),
     previousEntries: previous.map(toView),

@@ -143,8 +143,26 @@ function NutritionCard({ day, busy, run }: CardProps) {
           </span>
         </div>
         <Bar value={macros.protein} target={targets.protein} />
-        <div className="muted tiny" style={{ marginTop: 8 }}>
-          Жири {macros.fat} г · Вуглеводи {macros.carbs} г
+
+        <div className="macro-bars">
+          <div>
+            <div className="row spread small">
+              <span>Вуглеводи</span>
+              <span className="muted">
+                {macros.carbs} / {targets.carbs} г
+              </span>
+            </div>
+            <Bar value={macros.carbs} target={targets.carbs} />
+          </div>
+          <div>
+            <div className="row spread small">
+              <span>Жири</span>
+              <span className="muted">
+                {macros.fat} / {targets.fat} г
+              </span>
+            </div>
+            <Bar value={macros.fat} target={targets.fat} over />
+          </div>
         </div>
 
         {day.recentFoods.length > 0 && !form ? (
@@ -551,7 +569,23 @@ function TargetsCard({ day, busy, run }: CardProps) {
   const [weighIn, setWeighIn] = useState(day.profile.weighInReminder);
   const [calories, setCalories] = useState(day.targets.calories);
   const [protein, setProtein] = useState(day.targets.protein);
+  const [fat, setFat] = useState(day.targets.fat);
+  const [carbs, setCarbs] = useState(day.targets.carbs);
   const [water, setWater] = useState(day.targets.waterMl);
+
+  const latestWeight = day.weight.points[day.weight.points.length - 1]?.weightKg ?? null;
+  const macroKcal = Math.round(protein * 4 + fat * 9 + carbs * 4);
+
+  // Та сама формула, що й на сервері (energy.service macroSplit): білок і жири від ваги, решта — вуглеводи.
+  const applySplit = () => {
+    if (!latestWeight) return;
+    const p = Math.round((latestWeight * (goal === "cut" ? 2.4 : 2.2)) / 5) * 5;
+    const f = Math.round(Math.max(latestWeight * 0.9, (calories * 0.2) / 9) / 5) * 5;
+    setProtein(p);
+    setFat(f);
+    setCarbs(Math.max(0, Math.round((calories - p * 4 - f * 9) / 4 / 5) * 5));
+    haptic.success();
+  };
 
   if (!open) {
     return (
@@ -582,10 +616,29 @@ function TargetsCard({ day, busy, run }: CardProps) {
           <span className="muted tiny">Калорії</span>
           <Stepper value={calories} step={50} min={800} max={6000} unit="ккал" onChange={setCalories} />
         </label>
+        {latestWeight ? (
+          <button className="btn secondary" style={{ height: 42, fontSize: 14, marginTop: 0 }} onClick={applySplit}>
+            Розрахувати БЖВ під {fmtNumber(calories)} ккал і {fmtWeight(latestWeight)} кг
+          </button>
+        ) : null}
         <label>
-          <span className="muted tiny">Білок {protein && day.energy.missing !== true ? `· ${fmtWeight(Math.round((protein / day.energy.latestWeightKg) * 10) / 10)} г/кг` : ""}</span>
+          <span className="muted tiny">
+            Білок{latestWeight ? ` · ${fmtWeight(Math.round((protein / latestWeight) * 10) / 10)} г/кг` : ""}
+          </span>
           <Stepper value={protein} step={5} min={20} max={400} unit="г" onChange={setProtein} />
         </label>
+        <label>
+          <span className="muted tiny">Вуглеводи{latestWeight ? ` · ${fmtWeight(Math.round((carbs / latestWeight) * 10) / 10)} г/кг` : ""}</span>
+          <Stepper value={carbs} step={5} min={0} max={1200} unit="г" onChange={setCarbs} />
+        </label>
+        <label>
+          <span className="muted tiny">Жири{latestWeight ? ` · ${fmtWeight(Math.round((fat / latestWeight) * 10) / 10)} г/кг` : ""}</span>
+          <Stepper value={fat} step={5} min={10} max={400} unit="г" onChange={setFat} />
+        </label>
+        <div className="tiny" style={{ color: Math.abs(macroKcal - calories) > 100 ? "var(--warn)" : "var(--muted)" }}>
+          БЖВ разом: {fmtNumber(macroKcal)} ккал
+          {Math.abs(macroKcal - calories) > 100 ? ` — не збігається з ціллю ${fmtNumber(calories)} ккал` : ""}
+        </div>
         <label>
           <span className="muted tiny">Вода</span>
           <Stepper value={water} step={250} min={500} max={8000} unit="мл" onChange={setWater} />
@@ -603,6 +656,8 @@ function TargetsCard({ day, busy, run }: CardProps) {
               api.updateTargets(day.date, {
                 calories: Math.round(calories),
                 protein: Math.round(protein),
+                fat: Math.round(fat),
+                carbs: Math.round(carbs),
                 waterMl: Math.round(water),
               }),
             );

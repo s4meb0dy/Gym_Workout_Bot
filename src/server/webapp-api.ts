@@ -499,6 +499,15 @@ export function registerWebAppRoutes(app: express.Application): void {
       const calories = Number(b.calories);
       const protein = Number(b.protein);
       const waterMl = Number(b.waterMl);
+      const fat = b.fat === undefined ? undefined : Number(b.fat);
+      const carbs = b.carbs === undefined ? undefined : Number(b.carbs);
+      if (
+        (fat !== undefined && (!Number.isInteger(fat) || fat < 10 || fat > 400)) ||
+        (carbs !== undefined && (!Number.isInteger(carbs) || carbs < 0 || carbs > 1200))
+      ) {
+        res.status(400).json({ error: "invalid_targets" });
+        return;
+      }
       if (
         !Number.isInteger(calories) || calories < 800 || calories > 6000 ||
         !Number.isInteger(protein) || protein < 20 || protein > 400 ||
@@ -511,6 +520,8 @@ export function registerWebAppRoutes(app: express.Application): void {
         calorieTarget: calories,
         proteinTarget: protein,
         waterTargetMl: waterMl,
+        ...(fat !== undefined ? { fatTarget: fat } : {}),
+        ...(carbs !== undefined ? { carbsTarget: carbs } : {}),
       });
       await sendDay(res, user, dayOf(b.date));
     }),

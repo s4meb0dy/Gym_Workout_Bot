@@ -183,6 +183,16 @@ export async function getCalorieTarget(userId: string): Promise<number> {
   return setting?.calorieTarget ?? 2300;
 }
 
+export async function getMacroTargets(userId: string) {
+  const setting = await prisma.reminderSetting.findUnique({ where: { userId } });
+  return {
+    calories: setting?.calorieTarget ?? 2300,
+    protein: setting?.proteinTarget ?? 150,
+    fat: setting?.fatTarget ?? 70,
+    carbs: setting?.carbsTarget ?? 300,
+  };
+}
+
 export async function getProteinForDate(userId: string, date = localDateString()): Promise<number> {
   const result = await prisma.nutritionLog.aggregate({
     where: { userId, date },
@@ -259,6 +269,8 @@ export async function upsertReminderSetting(
     proteinHour: number;
     proteinTarget: number;
     calorieTarget: number;
+    fatTarget: number;
+    carbsTarget: number;
     backupEnabled: boolean;
     digestEnabled: boolean;
     supplementsEnabled: boolean;

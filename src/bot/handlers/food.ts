@@ -8,11 +8,10 @@ import {
   copyNutritionEntries,
   deleteNutritionEntry,
   formatDisplayDate,
-  getCalorieTarget,
+  getMacroTargets,
   getMacrosForDate,
   getNutritionEntries,
   getNutritionEntryById,
-  getProteinTarget,
   localDateString,
   updateNutritionEntry,
 } from "../../services/tracking.service";
@@ -59,8 +58,9 @@ function nutritionEntryLabel(e: {
 
 async function showDailyTotals(ctx: BotContext, userId: string, date = localDateString()) {
   const macros = await getMacrosForDate(userId, date);
-  const calTarget = await getCalorieTarget(userId);
-  const proteinTarget = await getProteinTarget(userId);
+  const targets = await getMacroTargets(userId);
+  const calTarget = targets.calories;
+  const proteinTarget = targets.protein;
   const calLeft = calTarget - macros.calories;
   const entries = await getNutritionEntries(userId, date);
   const keyboard =
@@ -70,7 +70,7 @@ async function showDailyTotals(ctx: BotContext, userId: string, date = localDate
     `📊 <b>${dayLabel(date)} разом</b>\n` +
       `🔥 ${macros.calories} / ${calTarget} ккал ${calLeft >= 0 ? `(залишок ${calLeft})` : `(перебір ${-calLeft})`}\n` +
       `🥩 Білки: ${macros.protein} / ${proteinTarget} г\n` +
-      `🧈 Жири: ${macros.fat} г • 🍞 Вуглеводи: ${macros.carbs} г`,
+      `🧈 Жири: ${macros.fat} / ${targets.fat} г • 🍞 Вуглеводи: ${macros.carbs} / ${targets.carbs} г`,
     { parse_mode: "HTML", reply_markup: keyboard },
   );
 }

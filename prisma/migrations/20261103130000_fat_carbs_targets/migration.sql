@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "ReminderSetting" ADD COLUMN "fatTarget" INTEGER NOT NULL DEFAULT 70;
+ALTER TABLE "ReminderSetting" ADD COLUMN "carbsTarget" INTEGER NOT NULL DEFAULT 300;

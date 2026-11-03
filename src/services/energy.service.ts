@@ -174,6 +174,26 @@ export async function estimateEnergy(userId: string): Promise<EnergyEstimate | E
   };
 }
 
+export interface MacroSplit {
+  calories: number;
+  protein: number;
+  fat: number;
+  carbs: number;
+}
+
+/**
+ * Розподіл БЖВ під калорії. Білок і жири рахуються від ваги (білок — головне для
+ * м'язів, жири — для гормонів), а решта калорій іде у вуглеводи як паливо для тренувань.
+ * Для чистого набору: білок 2.2 г/кг, жири ~0.9 г/кг, але не менше 20% калорій.
+ */
+export function macroSplit(calories: number, weightKg: number, goal: Goal): MacroSplit {
+  const proteinPerKg = goal === "cut" ? 2.4 : 2.2;
+  const protein = Math.round((weightKg * proteinPerKg) / 5) * 5;
+  const fat = Math.round(Math.max(weightKg * 0.9, (calories * 0.2) / 9) / 5) * 5;
+  const carbs = Math.max(0, Math.round((calories - protein * 4 - fat * 9) / 4 / 5) * 5);
+  return { calories, protein, fat, carbs };
+}
+
 /** Короткий висновок українською — для бота, порад і застосунку. */
 export function describeEnergy(e: EnergyEstimate | EnergyMissing): string {
   if ("missing" in e) return e.hint;
