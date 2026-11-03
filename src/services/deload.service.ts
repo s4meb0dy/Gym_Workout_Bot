@@ -18,17 +18,17 @@ function weekStart(date: Date): number {
 }
 
 /**
- * Тиждень вважається легким (розвантаження, хвороба, відпустка), якщо робочих підходів
- * у ньому менше половини від типового (медіана за 12 тижнів). Рахуємо повні тижні
- * поспіль після останнього легкого; поточний незавершений тиждень не рахується.
+ * Тиждень вважається легким (розвантаження, хвороба, відпустка), якщо тренувань у ньому
+ * менше ~60% від звичного (медіана за 12 тижнів): при 4 на тиждень — 2 і менше.
+ * Рахуємо повні тижні поспіль після останнього легкого; поточний тиждень не рахується.
  */
-export function countWeeksInARow(setsPerWeek: number[]): number {
-  if (setsPerWeek.length === 0) return 0;
-  const sorted = [...setsPerWeek].sort((a, b) => a - b);
+export function countWeeksInARow(workoutsPerWeek: number[]): number {
+  if (workoutsPerWeek.length === 0) return 0;
+  const sorted = [...workoutsPerWeek].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
   let streak = 0;
-  for (let i = setsPerWeek.length - 1; i >= 0; i--) {
-    if (setsPerWeek[i] < median * 0.5) break;
+  for (let i = workoutsPerWeek.length - 1; i >= 0; i--) {
+    if (workoutsPerWeek[i] < median * 0.6) break;
     streak++;
   }
   return streak;
@@ -40,13 +40,13 @@ export async function getDeloadStatus(userId: string): Promise<DeloadStatus> {
 
   const sessions = await prisma.workoutSession.findMany({
     where: { userId, completedAt: { gte: new Date(from), lt: new Date(thisWeek) } },
-    include: { _count: { select: { sets: { where: { weight: { gt: 0 }, reps: { gt: 0 } } } } } },
+    select: { completedAt: true },
   });
 
   const weeks = Array.from({ length: 12 }, () => 0);
   for (const s of sessions) {
     const index = Math.floor((weekStart(s.completedAt!) - from) / (7 * DAY_MS));
-    if (index >= 0 && index < 12) weeks[index] += s._count.sets;
+    if (index >= 0 && index < 12) weeks[index] += 1;
   }
 
   const weeksInARow = countWeeksInARow(weeks);
