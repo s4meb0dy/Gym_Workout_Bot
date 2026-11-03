@@ -1,5 +1,7 @@
 import { prisma } from "../db/client";
 import { estimateOneRepMax } from "./chart.service";
+import { effectiveLoad } from "./progression";
+import { latestBodyWeight } from "./records.service";
 
 export interface MuscleVolume {
   muscleGroup: string;
@@ -74,6 +76,10 @@ export interface OneRmPoint {
 
 /** Динаміка оцінки 1ПМ по вправі (найкращий підхід кожного тренування). */
 export async function getOneRmHistory(userId: string, exerciseId: number): Promise<OneRmPoint[]> {
+  // Для Гравітона рахуємо 1ПМ від ефективного навантаження (вага тіла − противага).
+  const exercise = await prisma.exercise.findUnique({ where: { id: exerciseId } });
+  const bodyWeight = await latestBodyWeight(userId);
+  const load = (w: number) => effectiveLoad(w, exercise?.progressionMode, bodyWeight ?? 70);
   const sessions = await prisma.workoutSession.findMany({
     where: {
       userId,
@@ -90,9 +96,9 @@ export async function getOneRmHistory(userId: string, exerciseId: number): Promi
   for (const session of sessions) {
     if (session.sets.length === 0) continue;
     let best = session.sets[0];
-    let bestRm = estimateOneRepMax(best.weight, best.reps);
+    let bestRm = estimateOneRepMax(load(best.weight), best.reps);
     for (const set of session.sets) {
-      const rm = estimateOneRepMax(set.weight, set.reps);
+      const rm = estimateOneRepMax(load(set.weight), set.reps);
       if (rm > bestRm) {
         best = set;
         bestRm = rm;
@@ -184,10 +190,20 @@ export async function detectExerciseStall(
     return { stalled: false, sessions: sessions.length, weight: 0 };
   }
 
-  const bestWeights = sessions.map((s) => Math.max(...s.sets.map((x) => x.weight)));
+  // Застій — коли не росте ні вага, ні оціночний 1ПМ (ріст повторів на тій самій вазі — це прогрес).
+  // Для Гравітона «найважчий» підхід — з найменшою противагою.
+  const exercise = await prisma.exercise.findUnique({ where: { id: exerciseId } });
+  const assist = exercise?.progressionMode === "assist";
+  const bestWeights = sessions.map((s) => (assist ? Math.min : Math.max)(...s.sets.map((x) => x.weight)));
   const allEqual = bestWeights.every((w) => Math.abs(w - bestWeights[0]) < 0.1);
+  const bodyWeight = assist ? ((await latestBodyWeight(userId)) ?? 70) : 0;
+  const bestRm = sessions.map((s) =>
+    Math.max(...s.sets.map((x) => estimateOneRepMax(effectiveLoad(x.weight, exercise?.progressionMode, bodyWeight), x.reps))),
+  );
+  // Сесії відсортовані від найновішої: прогрес, якщо найновіша краща за найстарішу з вікна.
+  const improving = bestRm[0] > bestRm[bestRm.length - 1] + 0.05;
 
-  return { stalled: allEqual, sessions: sessions.length, weight: bestWeights[0] };
+  return { stalled: allEqual && !improving, sessions: sessions.length, weight: bestWeights[0] };
 }
 
 export interface SessionSetRow {

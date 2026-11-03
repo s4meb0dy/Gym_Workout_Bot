@@ -27,6 +27,29 @@ describe("classifyRecord", () => {
     expect(classifyRecord({ weight: 20, reps: 10 }, withHeavy)?.kind).toBe("reps");
   });
 
+  describe("assisted (gravitron)", () => {
+    const assist = { progressionMode: "assist", bodyWeightKg: 70 };
+    const gravitron = [
+      { weight: 9, reps: 10 },
+      { weight: 4.5, reps: 8 },
+    ];
+
+    it("treats a lighter counterweight as the record", () => {
+      const record = classifyRecord({ weight: 1, reps: 6 }, gravitron, assist);
+      expect(record?.kind).toBe("weight");
+      expect(record?.text).toContain("власна вага");
+    });
+
+    it("never calls more assistance a record", () => {
+      expect(classifyRecord({ weight: 23, reps: 10 }, gravitron, assist)).toBeNull();
+    });
+
+    it("counts more bodyweight reps as progress", () => {
+      const record = classifyRecord({ weight: 1, reps: 9 }, [{ weight: 1, reps: 8 }], assist);
+      expect(record).not.toBeNull();
+    });
+  });
+
   it("ignores an equal or worse set", () => {
     expect(classifyRecord({ weight: 20, reps: 10 }, history)).toBeNull();
     expect(classifyRecord({ weight: 18, reps: 8 }, history)).toBeNull();

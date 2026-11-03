@@ -90,7 +90,11 @@ function ExerciseProgressScreen({ id, onBack }: { id: number; onBack: () => void
         <h1 className="title" style={{ marginTop: 6 }}>
           {data.name}
         </h1>
-        <div className="muted small">Оцінка 1ПМ (найкращий підхід тренування)</div>
+        <div className="muted small">
+          {data.progressionMode === "assist"
+            ? "Оцінка 1ПМ з вагою тіла: вага тіла − противага (найкращий підхід тренування)"
+            : "Оцінка 1ПМ (найкращий підхід тренування)"}
+        </div>
       </div>
 
       {points.length === 0 ? (
@@ -125,7 +129,9 @@ function ExerciseProgressScreen({ id, onBack }: { id: number; onBack: () => void
                 <div key={p.date} className="item row spread small">
                   <span className="muted">{fmtDate(p.date, { day: "numeric", month: "short", year: "2-digit" })}</span>
                   <span>
-                    {fmtWeight(p.bestWeight)} × {p.bestReps}
+                    {data.progressionMode === "assist"
+                      ? `${p.bestWeight <= 1.01 ? "ВВ" : `противага ${fmtWeight(p.bestWeight)}`} × ${p.bestReps}`
+                      : `${fmtWeight(p.bestWeight)} × ${p.bestReps}`}
                   </span>
                   <span style={{ color: p === best ? "var(--success)" : undefined }}>{fmtWeight(p.oneRm)} кг</span>
                 </div>

@@ -2,10 +2,11 @@ import { Exercise, WorkoutDay, WorkoutSession } from "@prisma/client";
 import { prisma } from "../db/client";
 import { classifyMuscleGroup } from "./muscle";
 import { estimateOneRepMax } from "./chart.service";
-import { classifyRecord } from "./records.service";
+import { classifyRecord, latestBodyWeight } from "./records.service";
 import {
   calculateProgression,
   calculateTonnage,
+  effectiveLoad,
   formatWeight,
   isWarmupExercise,
   ProgressionResult,
@@ -482,6 +483,7 @@ export async function completeWorkoutSession(
     byExercise.set(set.exerciseId, list);
   }
 
+  const bodyWeightKg = await latestBodyWeight(session.userId);
   for (const [exerciseId, sets] of byExercise) {
     const previous = await prisma.set.findMany({
       where: {
@@ -494,13 +496,15 @@ export async function completeWorkoutSession(
     });
 
     // Спершу найважчий підхід (рекорд ваги), потім найкращий за 1ПМ (рекорд 1ПМ / повторів).
-    const heaviest = sets.reduce((max, set) => (set.weight > max.weight ? set : max), sets[0]);
+    const options = { progressionMode: sets[0].exercise.progressionMode, bodyWeightKg };
+    const load = (s: { weight: number }) => effectiveLoad(s.weight, options.progressionMode, bodyWeightKg ?? 70);
+    const heaviest = sets.reduce((max, set) => (load(set) > load(max) ? set : max), sets[0]);
     const strongest = sets.reduce(
-      (best, set) => (estimateOneRepMax(set.weight, set.reps) > estimateOneRepMax(best.weight, best.reps) ? set : best),
+      (best, set) => (estimateOneRepMax(load(set), set.reps) > estimateOneRepMax(load(best), best.reps) ? set : best),
       sets[0],
     );
     const candidate = [heaviest, strongest]
-      .map((set) => ({ set, record: classifyRecord(set, previous) }))
+      .map((set) => ({ set, record: classifyRecord(set, previous, options) }))
       .find((c) => c.record);
 
     if (candidate?.record) {

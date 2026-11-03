@@ -45,6 +45,29 @@ describe("calculateProgression", () => {
     expect(result.suggestedWeight).toBe(25);
   });
 
+  it("stops at bodyweight instead of suggesting zero counterweight", () => {
+    const fromAssist = calculateProgression(
+      [
+        { weight: 2, reps: 10 },
+        { weight: 2, reps: 10 },
+        { weight: 2, reps: 10 },
+      ],
+      3,
+      6,
+      10,
+      { progressionMode: "assist", progressionStep: 2 },
+    );
+    expect(fromAssist.suggestedWeight).toBe(1);
+    expect(fromAssist.message).toContain("власна вага");
+
+    const atBodyweight = calculateProgression([{ weight: 1, reps: 8 }], 1, 6, 10, {
+      progressionMode: "assist",
+      progressionStep: 2,
+    });
+    expect(atBodyweight.suggestedWeight).toBe(1);
+    expect(atBodyweight.message).toContain("більше повторень");
+  });
+
   it("suggests the baseline on the first workout", () => {
     const result = calculateProgression([], 3, 8, 10, {
       baselineWeightMin: 10,

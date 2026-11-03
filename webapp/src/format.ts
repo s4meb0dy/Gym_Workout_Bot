@@ -20,8 +20,17 @@ export function fmtClock(totalSeconds: number): string {
   return `${h > 0 ? `${h}:` : ""}${mm}:${String(sec).padStart(2, "0")}`;
 }
 
-export function fmtSets(sets: Array<{ weight: number; reps: number }>): string {
-  return sets.map((s) => (s.weight > 0 ? `${fmtWeight(s.weight)}×${s.reps}` : `${s.reps}`)).join("  ");
+/** Гравітон: 1 кг противаги = підхід з власною вагою (див. ASSIST_BODYWEIGHT на сервері). */
+export function isBodyweight(weight: number, mode?: string): boolean {
+  return mode === "assist" && weight <= 1.01;
+}
+
+export function fmtSetWeight(weight: number, mode?: string): string {
+  return isBodyweight(weight, mode) ? "ВВ" : fmtWeight(weight);
+}
+
+export function fmtSets(sets: Array<{ weight: number; reps: number }>, mode?: string): string {
+  return sets.map((s) => (s.weight > 0 ? `${fmtSetWeight(s.weight, mode)}×${s.reps}` : `${s.reps}`)).join("  ");
 }
 
 export function daysAgo(iso: string | null): string {

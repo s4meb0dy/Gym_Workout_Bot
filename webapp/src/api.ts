@@ -101,7 +101,12 @@ export interface HistoryDetail {
   dayName: string;
   durationMinutes: number;
   tonnage: number;
-  exercises: Array<{ exerciseId: number; name: string; sets: Array<{ weight: number; reps: number }> }>;
+  exercises: Array<{
+    exerciseId: number;
+    name: string;
+    progressionMode: string;
+    sets: Array<{ weight: number; reps: number }>;
+  }>;
 }
 
 export interface ProgressData {
@@ -244,5 +249,5 @@ export const api = {
     request<{ day: DayData }>("PATCH", "/profile", { ...profile, date }),
   advice: (date: string) => request<{ advice: string | null }>("POST", "/health/advice", { date }),
   exerciseProgress: (id: number) =>
-    request<{ name: string; points: OneRmPoint[] }>("GET", `/progress/exercises/${id}`),
+    request<{ name: string; progressionMode: string; points: OneRmPoint[] }>("GET", `/progress/exercises/${id}`),
 };

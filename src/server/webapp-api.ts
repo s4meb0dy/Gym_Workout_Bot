@@ -376,7 +376,7 @@ export function registerWebAppRoutes(app: express.Application): void {
         return;
       }
       const points = await getOneRmHistory(user.id, exercise.id);
-      res.json({ name: exercise.name, points });
+      res.json({ name: exercise.name, progressionMode: exercise.progressionMode, points });
     }),
   );
 

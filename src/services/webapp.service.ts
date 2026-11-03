@@ -178,17 +178,25 @@ export async function buildHistoryDetail(userId: string, sessionId: string) {
     return null;
   }
 
-  const groups = new Map<number, { name: string; order: number; sets: Array<{ weight: number; reps: number }> }>();
+  const groups = new Map<
+    number,
+    { name: string; order: number; mode: string; sets: Array<{ weight: number; reps: number }> }
+  >();
   for (const set of session.sets) {
     if (set.weight <= 0 || set.reps <= 0) continue;
-    const group = groups.get(set.exerciseId) ?? { name: set.exercise.name, order: set.exercise.orderIndex, sets: [] };
+    const group = groups.get(set.exerciseId) ?? {
+      name: set.exercise.name,
+      order: set.exercise.orderIndex,
+      mode: set.exercise.progressionMode,
+      sets: [],
+    };
     group.sets.push({ weight: set.weight, reps: set.reps });
     groups.set(set.exerciseId, group);
   }
 
   const exercises = [...groups.entries()]
     .sort(([, a], [, b]) => a.order - b.order)
-    .map(([exerciseId, g]) => ({ exerciseId, name: g.name, sets: g.sets }));
+    .map(([exerciseId, g]) => ({ exerciseId, name: g.name, progressionMode: g.mode, sets: g.sets }));
 
   return {
     id: session.id,

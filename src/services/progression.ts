@@ -25,6 +25,30 @@ export interface ProgressionResult {
   message: string;
 }
 
+/**
+ * Вправи з противагою (Гравітон): менша противага = складніше. Підхід без противаги
+ * (власна вага) записується як 1 кг — у Гравітоні такої пластини немає, а 0 усюди
+ * означає «не робочий підхід» і випав би зі статистики.
+ */
+export const ASSIST_BODYWEIGHT = 1;
+
+export function isBodyweightAssist(weight: number): boolean {
+  return weight <= ASSIST_BODYWEIGHT + 0.01;
+}
+
+/** Підпис навантаження: для противаги 1 кг — «власна вага». */
+export function formatLoad(weight: number, progressionMode?: string): string {
+  if (progressionMode === "assist") {
+    return isBodyweightAssist(weight) ? "власна вага" : `противага ${formatWeight(weight)} кг`;
+  }
+  return `${formatWeight(weight)} кг`;
+}
+
+/** Ефективне навантаження: для противаги — вага тіла мінус противага. */
+export function effectiveLoad(weight: number, progressionMode: string | undefined, bodyWeightKg: number): number {
+  return progressionMode === "assist" ? Math.max(0, bodyWeightKg - (isBodyweightAssist(weight) ? 0 : weight)) : weight;
+}
+
 export const MANUAL_WEIGHT_HINT =
   "\n\n✏️ <i>Можеш ввести будь-яку фактичну вагу — якщо в залі немає рекомендованого номіналу, просто запиши те, що взяли.</i>";
 
@@ -178,7 +202,19 @@ export function calculateProgression(
 
   if (allHitMax) {
     if (progressionMode === "assist") {
-      const suggestedWeight = Math.max(0, lastWeight - progressionStep);
+      if (isBodyweightAssist(lastWeight)) {
+        return {
+          lastWeight,
+          lastReps,
+          lastSets: workingSets,
+          suggestedWeight: ASSIST_BODYWEIGHT,
+          shouldIncreaseWeight: false,
+          message:
+            `Минулого разу — власна вага, ${lastReps} ${repUnit} 🔥\n` +
+            "Далі: більше повторень (до 12–15), а потім — підтягування з додатковою вагою на поясі як нова вправа.",
+        };
+      }
+      const suggestedWeight = Math.max(ASSIST_BODYWEIGHT, lastWeight - progressionStep);
       return {
         lastWeight,
         lastReps,
@@ -187,7 +223,11 @@ export function calculateProgression(
         shouldIncreaseWeight: true,
         message:
           `Минулого разу ${unit} була ${formatWeight(lastWeight)} кг на ${lastReps} ${repUnit}.\n` +
-          `Сьогодні ціль: зменшити противагу до ${formatWeight(suggestedWeight)} кг (−${formatWeight(progressionStep)} кг, ${repTarget}).` +
+          `Сьогодні ціль: ${
+            isBodyweightAssist(suggestedWeight)
+              ? "власна вага, без противаги"
+              : `зменшити противагу до ${formatWeight(suggestedWeight)} кг (−${formatWeight(progressionStep)} кг)`
+          }, ${repTarget}.` +
           MANUAL_WEIGHT_HINT,
       };
     }
@@ -203,6 +243,17 @@ export function calculateProgression(
         `Минулого разу робоча вага була ${formatWeight(lastWeight)} кг на ${lastReps} ${repUnit}.\n` +
         `Сьогодні ціль: ${formatWeight(suggestedWeight)} кг (+${formatWeight(progressionStep)} кг, ${repTarget}).` +
         MANUAL_WEIGHT_HINT,
+    };
+  }
+
+  if (progressionMode === "assist" && isBodyweightAssist(lastWeight)) {
+    return {
+      lastWeight,
+      lastReps,
+      lastSets: workingSets,
+      suggestedWeight: ASSIST_BODYWEIGHT,
+      shouldIncreaseWeight: false,
+      message: `Минулого разу — власна вага, ${lastReps} ${repUnit}.\nСьогодні ціль: власна вага і більше повторень (${repTarget}).`,
     };
   }
 

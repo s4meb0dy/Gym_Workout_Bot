@@ -102,7 +102,7 @@ function HistoryDetailScreen({ id, onBack }: { id: string; onBack: () => void })
             <div className="chips" style={{ marginTop: 6 }}>
               {e.sets.map((set, i) => (
                 <span key={i} className="chip">
-                  {fmtSets([set])}
+                  {fmtSets([set], e.progressionMode)}
                 </span>
               ))}
             </div>

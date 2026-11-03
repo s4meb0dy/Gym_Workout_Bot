@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ExerciseView, SetView, Summary, WorkoutView } from "./api";
 import { Stepper } from "./components";
-import { fmtClock, fmtSets, fmtTarget, fmtWeight, isDone, unitLabel } from "./format";
+import { fmtClock, fmtSets, fmtSetWeight, fmtTarget, fmtWeight, isBodyweight, isDone, unitLabel } from "./format";
 import { confirmAction, haptic } from "./telegram";
 
 interface Props {
@@ -228,7 +228,7 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
                   </span>
                   {!isCurrent && done && ex.type !== "warmup" ? (
                     <span className="muted tiny ellipsis" style={{ display: "block" }}>
-                      {fmtSets(ex.sets)}
+                      {fmtSets(ex.sets, ex.progressionMode)}
                     </span>
                   ) : null}
                 </span>
@@ -331,7 +331,7 @@ function CurrentExercise(props: CurrentProps) {
 
       {ex.lastSets.length > 0 ? (
         <div className="muted small" style={{ marginTop: 6 }}>
-          Минулого разу: {fmtSets(ex.lastSets)}
+          Минулого разу: {fmtSets(ex.lastSets, ex.progressionMode)}
         </div>
       ) : null}
 
@@ -343,7 +343,7 @@ function CurrentExercise(props: CurrentProps) {
               className={`chip today${editingId === s.id ? " editing" : ""}`}
               onClick={() => props.onEditSet(s)}
             >
-              {fmtWeight(s.weight)}×{s.reps}
+              {fmtSetWeight(s.weight, ex.progressionMode)}×{s.reps}
             </button>
           ))}
         </div>
@@ -351,7 +351,7 @@ function CurrentExercise(props: CurrentProps) {
 
       {ex.stalledWeight != null ? (
         <div className="note warn">
-          {fmtWeight(ex.stalledWeight)} кг тримається кілька тренувань поспіль. Варіанти: deload −10%, інший діапазон
+          {isBodyweight(ex.stalledWeight, ex.progressionMode) ? "Власна вага" : `${fmtWeight(ex.stalledWeight)} кг`} тримається кілька тренувань поспіль. Варіанти: deload −10%, інший діапазон
           повторень, або перевір сон і калорії.
         </div>
       ) : null}
@@ -373,7 +373,13 @@ function CurrentExercise(props: CurrentProps) {
       ) : (
         <>
           <div className="steppers">
-            <Stepper value={props.weight} step={ex.progressionStep} unit={isAssist ? "кг противаги" : "кг"} onChange={props.onWeight} />
+            <Stepper
+              value={props.weight}
+              step={ex.progressionStep}
+              min={isAssist ? 1 : 0}
+              unit={isAssist ? (isBodyweight(props.weight, "assist") ? "= власна вага" : "кг противаги") : "кг"}
+              onChange={props.onWeight}
+            />
             <Stepper value={props.reps} step={ex.type === "time" ? 5 : 1} unit={unitLabel(ex)} onChange={props.onReps} />
           </div>
 

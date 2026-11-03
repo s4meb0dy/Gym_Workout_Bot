@@ -20,6 +20,7 @@ import {
   formatRestDuration,
   formatWeight,
   getBaselineWeight,
+  isBodyweightAssist,
   ParsedSet,
   ProgressionResult,
   SetResult,
@@ -155,8 +156,14 @@ function syncCardFromCallback(ctx: BotContext): void {
   }
 }
 
-function formatSetList(sets: SetResult[]): string {
-  return sets.map((set) => `${formatWeight(set.weight)}×${set.reps}`).join(", ");
+function formatSetList(sets: SetResult[], progressionMode?: string): string {
+  return sets
+    .map((set) =>
+      progressionMode === "assist" && isBodyweightAssist(set.weight)
+        ? `ВВ×${set.reps}`
+        : `${formatWeight(set.weight)}×${set.reps}`,
+    )
+    .join(", ");
 }
 
 /**
@@ -209,11 +216,11 @@ function buildSetCard(
     `Підхід ${state.setNumber}/${state.exercise.targetSets} · ціль ${target}\n\n`;
 
   text += `🕘 Минулого разу: ${
-    progression.lastSets.length > 0 ? formatSetList(progression.lastSets) : "—"
+    progression.lastSets.length > 0 ? formatSetList(progression.lastSets, state.exercise.progressionMode) : "—"
   }\n`;
 
   if (todaySets.length > 0) {
-    text += `🔥 Сьогодні: ${formatSetList(todaySets)}\n`;
+    text += `🔥 Сьогодні: ${formatSetList(todaySets, state.exercise.progressionMode)}\n`;
   }
 
   if (stallNote) {
@@ -225,7 +232,10 @@ function buildSetCard(
   }
 
   text += `\n⏱️ Відпочинок: ${formatRestDuration(state.exercise.restTimeInSeconds)}`;
-  text += `\n<i>Кнопки або текстом: «100 8», «8», «100 8 @9»</i>`;
+  text +=
+    state.exercise.progressionMode === "assist"
+      ? `\n<i>Противага × повтори: «9 8» або «8». Власна вага (без противаги) — «1 8».</i>`
+      : `\n<i>Кнопки або текстом: «100 8», «8», «100 8 @9»</i>`;
 
   return text;
 }
