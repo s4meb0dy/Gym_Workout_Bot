@@ -25,6 +25,7 @@ import {
   SetResult,
 } from "../../services/progression";
 import { detectExerciseStall } from "../../services/analytics.service";
+import { detectSetRecord } from "../../services/records.service";
 import {
   cancelActiveSession,
   completeWorkoutSession,
@@ -242,7 +243,7 @@ async function renderWorkoutCard(ctx: BotContext, status?: string): Promise<void
     ctx.session.awaitingSetInput = false;
     await clearCard(ctx);
     await ctx.reply(status ? `${status}\n\nНемає активного тренування.` : "Немає активного тренування.", {
-      reply_markup: mainMenuKeyboard,
+      reply_markup: mainMenuKeyboard(),
     });
     return;
   }
@@ -351,7 +352,8 @@ async function logWorkingSetAndContinue(
   parsed: ParsedSet,
   progression?: ProgressionResult,
 ): Promise<void> {
-  await logSet(sessionId, exercise.id, setNumber, parsed.weight, parsed.reps, parsed.rpe, parsed.note);
+  const created = await logSet(sessionId, exercise.id, setNumber, parsed.weight, parsed.reps, parsed.rpe, parsed.note);
+  const record = await detectSetRecord(ctx.user.id, created.id);
 
   // Наступний підхід за замовчуванням повторює те, що тільки що зробили.
   ctx.session.quickWeight = parsed.weight;
@@ -359,7 +361,9 @@ async function logWorkingSetAndContinue(
 
   const unit = exercise.exerciseType === "time" ? "сек" : "повт.";
   startRestTimer(ctx, exercise.restTimeInSeconds);
-  await renderWorkoutCard(ctx, buildConfirmText(parsed, unit, progression));
+  const confirm = buildConfirmText(parsed, unit, progression);
+  await renderWorkoutCard(ctx, record ? `${confirm}
+🏆 <b>${record.text}</b>` : confirm);
 }
 
 async function handleSetInput(ctx: BotContext, text: string): Promise<void> {
@@ -839,7 +843,7 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
       await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
       ctx.session.awaitingSetInput = false;
       await clearCard(ctx);
-      await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard });
+      await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard() });
       return;
     }
 
@@ -853,7 +857,7 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
       await ctx.answerCallbackQuery({ text: "Немає активного тренування" });
       ctx.session.awaitingSetInput = false;
       await clearCard(ctx);
-      await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard });
+      await ctx.reply("Немає активного тренування.", { reply_markup: mainMenuKeyboard() });
       return;
     }
 
@@ -874,7 +878,7 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
 
     await ctx.reply(formatWorkoutSummary(summary), {
       parse_mode: "HTML",
-      reply_markup: mainMenuKeyboard,
+      reply_markup: mainMenuKeyboard(),
     });
   });
 
@@ -910,7 +914,7 @@ export function registerWorkoutHandlers(bot: Bot<BotContext>) {
     await ctx.deleteMessage().catch(() => undefined);
     await clearCard(ctx);
 
-    await ctx.reply("Тренування скасовано.", { reply_markup: mainMenuKeyboard });
+    await ctx.reply("Тренування скасовано.", { reply_markup: mainMenuKeyboard() });
   });
 
   bot.on("message:text", async (ctx, next) => {

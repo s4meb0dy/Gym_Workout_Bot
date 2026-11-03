@@ -158,6 +158,17 @@ pm2 restart gym-bot   # перезапуск
 pm2 stop gym-bot      # зупинити
 ```
 
+## Автодеплой
+
+На VM кожні 5 хв cron запускає `deploy/auto-update.sh`: якщо в `origin/main` є нові
+коміти — `git pull` і `bash deploy/setup.sh`. Достатньо запушити в `main`.
+
+```bash
+(crontab -l 2>/dev/null | grep -v auto-update.sh; \
+ echo "*/5 * * * * bash $HOME/gym-bot/deploy/auto-update.sh >> $HOME/gym-bot-deploy.log 2>&1") | crontab -
+tail -f ~/gym-bot-deploy.log   # журнал деплоїв
+```
+
 ## Оновлення після змін коду
 
 ```bash

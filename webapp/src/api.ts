@@ -47,7 +47,7 @@ export interface Summary {
   tonnage: number;
   durationMinutes: number;
   dayName: string;
-  records: Array<{ exerciseName: string; weight: number; reps: number }>;
+  records: Array<{ exerciseName: string; weight: number; reps: number; note?: string }>;
 }
 
 export interface ProgramExercise {
@@ -199,7 +199,11 @@ export const api = {
     request<{ firstName: string | null; days: DayView[]; workout: WorkoutView | null }>("GET", "/state"),
   start: (dayNumber: number) => request<{ workout: WorkoutView }>("POST", "/workout/start", { dayNumber }),
   logSet: (exerciseId: number, weight: number, reps: number) =>
-    request<{ workout: WorkoutView; restSeconds: number }>("POST", "/workout/sets", { exerciseId, weight, reps }),
+    request<{ workout: WorkoutView; restSeconds: number; record: string | null }>("POST", "/workout/sets", {
+      exerciseId,
+      weight,
+      reps,
+    }),
   updateSet: (id: string, weight: number, reps: number) =>
     request<{ workout: WorkoutView }>("PATCH", `/workout/sets/${id}`, { weight, reps }),
   deleteSet: (id: string) => request<{ workout: WorkoutView }>("DELETE", `/workout/sets/${id}`),

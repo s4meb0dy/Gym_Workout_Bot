@@ -53,6 +53,7 @@ import {
   updateNutritionEntry,
   upsertReminderSetting,
 } from "../services/tracking.service";
+import { detectSetRecord } from "../services/records.service";
 import { requireWebAppUser } from "./webapp-auth";
 
 let botApi: Api | null = null;
@@ -190,9 +191,14 @@ export function registerWebAppRoutes(app: express.Application): void {
       }
 
       const setNumber = await nextSetNumber(session.id, exercise.id);
-      await logSet(session.id, exercise.id, setNumber, parsed.weight, parsed.reps);
+      const created = await logSet(session.id, exercise.id, setNumber, parsed.weight, parsed.reps);
       notifyRest(user, exercise.restTimeInSeconds);
-      res.json({ workout: await buildWorkoutView(user.id), restSeconds: exercise.restTimeInSeconds });
+      const record = await detectSetRecord(user.id, created.id);
+      res.json({
+        workout: await buildWorkoutView(user.id),
+        restSeconds: exercise.restTimeInSeconds,
+        record: record?.text ?? null,
+      });
     }),
   );
 

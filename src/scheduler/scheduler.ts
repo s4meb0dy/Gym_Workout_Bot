@@ -8,7 +8,7 @@ import {
   getWaterForDate,
 } from "../services/tracking.service";
 import { getWorkoutDayByNumber } from "../services/workout.service";
-import { buildBackupFile, backupExists } from "../services/backup.service";
+import { createBackupFile, backupExists } from "../services/backup.service";
 import { buildWeeklyDigest } from "../services/digest.service";
 import { checkStaleWorkouts } from "./stale-workouts";
 import { InlineKeyboard } from "grammy";
@@ -125,9 +125,14 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
       }
 
       if (setting.backupEnabled && hour === BACKUP_HOUR && backupExists()) {
-        await bot.api.sendDocument(chatId, buildBackupFile(), {
-          caption: "💾 Щоденний автоматичний бекап бази даних.",
-        });
+        const backup = await createBackupFile();
+        try {
+          await bot.api.sendDocument(chatId, backup.file, {
+            caption: "💾 Щоденний автоматичний бекап бази даних.",
+          });
+        } finally {
+          backup.cleanup();
+        }
       }
 
       if (setting.digestEnabled && weekday === DIGEST_WEEKDAY && hour === DIGEST_HOUR) {

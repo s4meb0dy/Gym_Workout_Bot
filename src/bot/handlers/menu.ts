@@ -5,7 +5,7 @@ import { BotContext } from "../bot";
 export function registerMenuHandlers(bot: Bot<BotContext>) {
   const showMainMenu = async (ctx: BotContext, text = "Головне меню:") => {
     ctx.session.awaitingSetInput = false;
-    await ctx.reply(text, { reply_markup: mainMenuKeyboard });
+    await ctx.reply(text, { reply_markup: mainMenuKeyboard() });
   };
 
   bot.command("menu", (ctx) => showMainMenu(ctx));

@@ -20,7 +20,8 @@ export async function generateGeminiText(
     throw new Error("GEMINI_API_KEY_MISSING");
   }
 
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`;
+  // Ключ у заголовку, а не в URL — щоб не потрапляв у логи запитів.
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent`;
 
   const body: Record<string, unknown> = {
     contents: [
@@ -39,7 +40,7 @@ export async function generateGeminiText(
 
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", "x-goog-api-key": config.geminiApiKey },
     body: JSON.stringify(body),
   });
 

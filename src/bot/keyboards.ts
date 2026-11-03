@@ -1,30 +1,36 @@
 import { InlineKeyboard, Keyboard } from "grammy";
 import { formatWeight } from "../services/progression";
+import { getWebAppUrl } from "./webapp-button";
 
-/** Єдине джерело правди для кнопок головного меню (reply-клавіатура + роутинг тексту). */
+/**
+ * Єдине джерело правди для кнопок головного меню (reply-клавіатура + роутинг тексту).
+ * Старі кнопки лишаються у списку, щоб клавіатура, яку Telegram ще показує, працювала.
+ */
 export const MAIN_MENU_BUTTONS = [
   "🏋️ Розпочати тренування",
+  "🍽 Їжа",
+  "⚖️ Вага тіла",
+  "🛠 Інструменти",
   "📋 Моя програма (4 дні)",
   "📊 Статистика та рекорди",
-  "⚖️ Вага тіла",
   "🍗 Білок",
   "💧 Вода",
-  "🛠 Інструменти",
 ] as const;
 
-export const mainMenuKeyboard = new Keyboard()
-  .text("🏋️ Розпочати тренування")
-  .row()
-  .text("📋 Моя програма (4 дні)")
-  .text("📊 Статистика та рекорди")
-  .row()
-  .text("⚖️ Вага тіла")
-  .text("🍗 Білок")
-  .row()
-  .text("💧 Вода")
-  .text("🛠 Інструменти")
-  .resized()
-  .persistent();
+/** Основне тепер у застосунку — у боті лишаються швидкі дії та нагадування. */
+export function mainMenuKeyboard(): Keyboard {
+  const keyboard = new Keyboard();
+  const url = getWebAppUrl();
+  if (url) keyboard.webApp("📱 Відкрити застосунок", url).row();
+  return keyboard
+    .text("🏋️ Розпочати тренування")
+    .text("🍽 Їжа")
+    .row()
+    .text("⚖️ Вага тіла")
+    .text("🛠 Інструменти")
+    .resized()
+    .persistent();
+}
 
 export function isMainMenuButton(text: string): boolean {
   return (MAIN_MENU_BUTTONS as readonly string[]).includes(text);

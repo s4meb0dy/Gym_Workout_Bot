@@ -55,7 +55,7 @@ export interface EnergyMissing {
 
 const DAY_MS = 86400000;
 
-function slopePerDay(points: Array<{ t: number; w: number }>): number {
+export function slopePerDay(points: Array<{ t: number; w: number }>): number {
   const n = points.length;
   const meanT = points.reduce((s, p) => s + p.t, 0) / n;
   const meanW = points.reduce((s, p) => s + p.w, 0) / n;

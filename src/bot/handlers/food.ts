@@ -114,7 +114,7 @@ async function showNutritionEntry(ctx: BotContext, id: string) {
 }
 
 export function registerFoodHandlers(bot: Bot<BotContext>) {
-  bot.command("food", async (ctx) => {
+  const showFood = async (ctx: BotContext) => {
     if (!ctx.from) return;
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
     await showDailyTotals(ctx, user.id);
@@ -125,7 +125,9 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
       .row()
       .text("📋 Записи по днях", `nl_list:${localDateString()}`);
     await ctx.reply("🍽 Додай КБЖВ вручну або переглянь записи:", { reply_markup: keyboard });
-  });
+  };
+  bot.command("food", showFood);
+  bot.hears("🍽 Їжа", showFood);
 
   bot.callbackQuery("food_yday", async (ctx) => {
     await ctx.answerCallbackQuery();

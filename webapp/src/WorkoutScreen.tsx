@@ -43,11 +43,36 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(0);
   const [edit, setEdit] = useState<{ set: SetView; weight: number; reps: number } | null>(null);
-  const [rest, setRest] = useState<{ endsAt: number; total: number } | null>(null);
+  const restKey = `rest:${initial.sessionId}`;
+  // Таймер відпочинку переживає перезавантаження застосунку (localStorage може бути недоступний).
+  const [rest, setRestState] = useState<{ endsAt: number; total: number } | null>(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(restKey) ?? "null") as { endsAt: number; total: number } | null;
+      return saved && saved.endsAt > Date.now() ? saved : null;
+    } catch {
+      return null;
+    }
+  });
+  const setRest = (value: { endsAt: number; total: number } | null) => {
+    setRestState(value);
+    try {
+      if (value) localStorage.setItem(restKey, JSON.stringify(value));
+      else localStorage.removeItem(restKey);
+    } catch {
+      // без збереження — таймер просто не переживе перезавантаження
+    }
+  };
   const [showTechnique, setShowTechnique] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [record, setRecord] = useState<string | null>(null);
   const now = useNow(rest ? 250 : 1000);
+
+  useEffect(() => {
+    if (!record) return;
+    const id = setTimeout(() => setRecord(null), 6000);
+    return () => clearTimeout(id);
+  }, [record]);
 
   const current = workout.exercises.find((e) => e.id === currentId) ?? null;
 
@@ -103,6 +128,7 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
 
       const res = await api.logSet(current.id, w, r);
       haptic.success();
+      if (res.record) setRecord(res.record);
       setWorkout(res.workout);
       if (res.restSeconds > 0) {
         setRest({ endsAt: Date.now() + res.restSeconds * 1000, total: res.restSeconds });
@@ -178,6 +204,12 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
           {doneCount} / {total} вправ
         </div>
       </div>
+
+      {record ? (
+        <button className="record-banner" onClick={() => setRecord(null)}>
+          🏆 {record}
+        </button>
+      ) : null}
 
       <div className="list">
         {workout.exercises.map((ex, index) => {

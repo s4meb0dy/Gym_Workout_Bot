@@ -1,6 +1,6 @@
 import { Bot, InputFile } from "grammy";
 import { BotContext } from "../bot";
-import { backupExists, buildBackupFile } from "../../services/backup.service";
+import { backupExists, createBackupFile } from "../../services/backup.service";
 import { getAllSetsForExport } from "../../services/analytics.service";
 import { buildSetsCsv } from "../../services/export.service";
 import { findOrCreateUser } from "../../services/workout.service";
@@ -13,10 +13,15 @@ async function sendBackup(ctx: BotContext) {
     return;
   }
 
-  await ctx.replyWithDocument(buildBackupFile(), {
-    caption:
-      "💾 Бекап бази даних. Збережи цей файл — на безкоштовному хостингу диск може очищатися при перезапуску.",
-  });
+  const backup = await createBackupFile();
+  try {
+    await ctx.replyWithDocument(backup.file, {
+      caption:
+        "💾 Бекап бази даних. Збережи цей файл — на безкоштовному хостингу диск може очищатися при перезапуску.",
+    });
+  } finally {
+    backup.cleanup();
+  }
 }
 
 async function sendExport(ctx: BotContext) {

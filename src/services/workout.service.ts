@@ -1,6 +1,8 @@
 import { Exercise, WorkoutDay, WorkoutSession } from "@prisma/client";
 import { prisma } from "../db/client";
 import { classifyMuscleGroup } from "./muscle";
+import { estimateOneRepMax } from "./chart.service";
+import { classifyRecord } from "./records.service";
 import {
   calculateProgression,
   calculateTonnage,
@@ -18,7 +20,7 @@ export interface WorkoutSummary {
   completedAt: Date;
   totalSets: number;
   tonnage: number;
-  records: Array<{ exerciseName: string; weight: number; reps: number }>;
+  records: Array<{ exerciseName: string; weight: number; reps: number; note?: string }>;
 }
 
 export async function findOrCreateUser(telegramId: number, username?: string, firstName?: string) {
@@ -480,25 +482,33 @@ export async function completeWorkoutSession(
     byExercise.set(set.exerciseId, list);
   }
 
-  for (const [, sets] of byExercise) {
-    const best = sets.reduce((max, set) => (set.weight > max.weight ? set : max), sets[0]);
-    const previousBest = await prisma.set.findFirst({
+  for (const [exerciseId, sets] of byExercise) {
+    const previous = await prisma.set.findMany({
       where: {
-        exerciseId: best.exerciseId,
-        workoutSession: {
-          userId: session.userId,
-          completedAt: { not: null },
-          id: { not: sessionId },
-        },
+        exerciseId,
+        weight: { gt: 0 },
+        reps: { gt: 0 },
+        workoutSession: { userId: session.userId, completedAt: { not: null }, id: { not: sessionId } },
       },
-      orderBy: { weight: "desc" },
+      select: { weight: true, reps: true },
     });
 
-    if (!previousBest || best.weight > previousBest.weight) {
+    // Спершу найважчий підхід (рекорд ваги), потім найкращий за 1ПМ (рекорд 1ПМ / повторів).
+    const heaviest = sets.reduce((max, set) => (set.weight > max.weight ? set : max), sets[0]);
+    const strongest = sets.reduce(
+      (best, set) => (estimateOneRepMax(set.weight, set.reps) > estimateOneRepMax(best.weight, best.reps) ? set : best),
+      sets[0],
+    );
+    const candidate = [heaviest, strongest]
+      .map((set) => ({ set, record: classifyRecord(set, previous) }))
+      .find((c) => c.record);
+
+    if (candidate?.record) {
       records.push({
-        exerciseName: best.exercise.name,
-        weight: best.weight,
-        reps: best.reps,
+        exerciseName: candidate.set.exercise.name,
+        weight: candidate.set.weight,
+        reps: candidate.set.reps,
+        note: candidate.record.text,
       });
     }
   }
@@ -575,7 +585,8 @@ export function formatWorkoutSummary(summary: WorkoutSummary): string {
   if (summary.records.length > 0) {
     text += `\n🏆 <b>Нові рекорди:</b>\n`;
     for (const record of summary.records) {
-      text += `• ${record.exerciseName}: ${formatWeight(record.weight)} кг × ${record.reps}\n`;
+      text += `• ${record.exerciseName}: ${formatWeight(record.weight)} кг × ${record.reps}`;
+      text += record.note ? ` — ${record.note}\n` : "\n";
     }
   } else {
     text += `\nСьогодні нових рекордів немає — але тренування зараховано! 💪`;

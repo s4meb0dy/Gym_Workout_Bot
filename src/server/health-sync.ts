@@ -56,14 +56,14 @@ function numFromBody(
  * хвилини (450) або секунди (27000). Ніч не буває довшою за 20 год, тож одиниця
  * однозначно визначається за величиною.
  */
-function normalizeSleepMinutes(value: number | undefined): number | undefined {
+export function normalizeSleepMinutes(value: number | undefined): number | undefined {
   if (value == null) return undefined;
   if (value <= 20) return value * 60;
   if (value > 1200) return value / 60;
   return value;
 }
 
-function parseSyncBody(body: Record<string, unknown>): {
+export function parseSyncBody(body: Record<string, unknown>): {
   token: string;
   date: string;
   metrics: HealthMetrics;

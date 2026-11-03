@@ -15,7 +15,9 @@ import { registerHistoryHandlers } from "./handlers/history";
 import { registerEditProgramHandlers } from "./handlers/editprogram";
 import { registerHealthHandlers } from "./handlers/health";
 import { registerConfirmHandlers } from "./confirm";
+import path from "path";
 import { mainMenuKeyboard } from "./keyboards";
+import { JsonFileStorage } from "./session-storage";
 import { getWebAppUrl, startWebAppMenuButton } from "./webapp-button";
 
 export interface SessionData {
@@ -50,6 +52,7 @@ export function createBot(): Bot<BotContext> {
 
   bot.use(
     session({
+      storage: new JsonFileStorage<SessionData>(path.resolve(__dirname, "../../data/sessions.json")),
       initial: (): SessionData => ({
         awaitingSetInput: false,
         awaitingInput: null,
@@ -94,7 +97,7 @@ export function createBot(): Bot<BotContext> {
       `Привіт, ${ctx.from?.first_name ?? "атлет"}! 👋\n\n` +
         "Я допоможу відстежувати силові тренування, прогресію ваги, вагу тіла, білок і нагадування.\n\n" +
         "Обери дію в меню:",
-      { reply_markup: mainMenuKeyboard },
+      { reply_markup: mainMenuKeyboard() },
     );
   });
 

@@ -35,7 +35,10 @@ export function SummaryScreen({ summary, onDone }: { summary: Summary; onDone: (
           <div className="list">
             {summary.records.map((r) => (
               <div className="item row spread" key={r.exerciseName}>
-                <span className="grow ellipsis">{r.exerciseName}</span>
+                <span className="grow">
+                  <span className="ellipsis" style={{ display: "block" }}>{r.exerciseName}</span>
+                  {r.note ? <span className="muted tiny">{r.note}</span> : null}
+                </span>
                 <span className="badge up">
                   {fmtWeight(r.weight)} кг × {r.reps}
                 </span>

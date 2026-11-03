@@ -291,6 +291,19 @@ input[type="number"] { -moz-appearance: textfield; }
 .column-bar { width: 100%; border-radius: 5px 5px 2px 2px; min-height: 2px; transition: height 0.3s ease; }
 .column-value { color: var(--muted); height: 14px; }
 
+.record-banner {
+  width: 100%;
+  margin-bottom: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--success-bg);
+  color: var(--success);
+  font-weight: 600;
+  text-align: left;
+  animation: pop 0.3s ease;
+}
+@keyframes pop { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
 .card { background: var(--card); border-radius: 14px; padding: 14px; }
 .big-num { font-size: 26px; font-weight: 600; font-variant-numeric: tabular-nums; }
 .nav-btn {
