@@ -170,7 +170,7 @@ input[type="number"] { -moz-appearance: textfield; }
   white-space: pre-line;
 }
 .note.warn { background: var(--warn-bg); color: var(--warn); }
-.link { color: var(--accent-text); font-size: 13px; margin-top: 8px; }
+.link { display: block; color: var(--accent-text); font-size: 13px; margin-top: 8px; text-align: left; }
 
 .restbar {
   position: fixed;

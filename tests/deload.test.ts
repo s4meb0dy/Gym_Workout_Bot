@@ -10,6 +10,10 @@ describe("countWeeksInARow", () => {
     expect(countWeeksInARow([4, 4, 4, 0, 4])).toBe(1);
   });
 
+  it("never counts empty weeks without a regular routine", () => {
+    expect(countWeeksInARow([0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0])).toBe(0);
+  });
+
   it("counts every week when there was no break", () => {
     expect(countWeeksInARow([4, 4, 3, 4, 4, 4, 3, 4])).toBe(8);
   });

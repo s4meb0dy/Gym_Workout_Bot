@@ -8,16 +8,17 @@ datasource db {
 }
 
 model User {
-  id              String           @id @default(cuid())
-  telegramId      BigInt           @unique
+  id              String            @id @default(cuid())
+  telegramId      BigInt            @unique
   username        String?
   firstName       String?
-  healthSyncToken String?          @unique
+  healthSyncToken String?           @unique
   heightCm        Int?
-  goal            String           @default("lean_bulk") // "lean_bulk" | "maintain" | "cut"
-  createdAt       DateTime         @default(now())
+  goal            String            @default("lean_bulk") // "lean_bulk" | "maintain" | "cut"
+  createdAt       DateTime          @default(now())
   sessions        WorkoutSession[]
   bodyWeights     BodyWeight[]
+  measurements    BodyMeasurement[]
   nutritionLogs   NutritionLog[]
   waterLogs       WaterLog[]
   healthLogs      HealthLog[]
@@ -64,6 +65,21 @@ model BodyWeight {
   @@index([userId, recordedAt])
 }
 
+/// Заміри тіла сантиметром (усі поля необов'язкові — міряй що встигаєш).
+model BodyMeasurement {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  waistCm     Float?
+  chestCm     Float?
+  shouldersCm Float?
+  armCm       Float?
+  thighCm     Float?
+  recordedAt  DateTime @default(now())
+
+  @@index([userId, recordedAt])
+}
+
 model NutritionLog {
   id           String   @id @default(cuid())
   userId       String
@@ -80,12 +96,12 @@ model NutritionLog {
 }
 
 model ReminderSetting {
-  id               String  @id @default(cuid())
-  userId           String  @unique
-  user             User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatId           BigInt
-  workoutEnabled   Boolean @default(true)
-  proteinEnabled   Boolean @default(true)
+  id                 String  @id @default(cuid())
+  userId             String  @unique
+  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatId             BigInt
+  workoutEnabled     Boolean @default(true)
+  proteinEnabled     Boolean @default(true)
   workoutHour        Int     @default(10)
   proteinHour        Int     @default(20)
   proteinTarget      Int     @default(150)
@@ -103,12 +119,12 @@ model ReminderSetting {
 }
 
 model WorkoutDay {
-  id         Int              @id @default(autoincrement())
-  dayNumber  Int              @unique
-  weekday    String
-  name       String
-  exercises  Exercise[]
-  sessions   WorkoutSession[]
+  id        Int              @id @default(autoincrement())
+  dayNumber Int              @unique
+  weekday   String
+  name      String
+  exercises Exercise[]
+  sessions  WorkoutSession[]
 }
 
 model Exercise {
@@ -122,11 +138,11 @@ model Exercise {
   targetRepsMin     Int
   targetRepsMax     Int
   bodyPart          String // "upper" | "lower"
-  muscleGroup       String   @default("Інше")
-  exerciseType      String   @default("reps") // "reps" | "time" | "warmup"
-  progressionMode   String   @default("weight") // "weight" | "assist"
-  progressionStep   Float    @default(2)
-  restTimeInSeconds Int      @default(90)
+  muscleGroup       String     @default("Інше")
+  exerciseType      String     @default("reps") // "reps" | "time" | "warmup"
+  progressionMode   String     @default("weight") // "weight" | "assist"
+  progressionStep   Float      @default(2)
+  restTimeInSeconds Int        @default(90)
   baselineWeightMin Float?
   baselineWeightMax Float?
   baselineNote      String?

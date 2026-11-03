@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, DayData, FoodEntry, Goal, Macros } from "./api";
+import { api, DayData, FoodEntry, Goal, Macros, MeasurementField } from "./api";
 import { LineChart } from "./charts";
 import { LoadState, Section, Stepper, useLoad } from "./components";
 import { fmtDate, fmtNumber, fmtWeight } from "./format";
@@ -82,6 +82,7 @@ export function DayScreen() {
       <NutritionCard day={day} busy={busy} run={run} />
       <WaterCard day={day} busy={busy} run={run} />
       <WeightCard day={day} busy={busy} run={run} />
+      <MeasurementsCard day={day} busy={busy} run={run} />
       <HealthCard day={day} />
       <TargetsCard day={day} busy={busy} run={run} />
     </div>
@@ -419,6 +420,145 @@ function WeightCard({ day, busy, run }: CardProps) {
             }}
           >
             Видалити останній запис
+          </button>
+        ) : null}
+      </div>
+    </Section>
+  );
+}
+
+const MEASUREMENT_LABELS: Array<[MeasurementField, string, string]> = [
+  ["waistCm", "Талія", "на рівні пупка, на видиху, живіт не втягувати"],
+  ["chestCm", "Груди", "через соски й під пахвами, руки опущені"],
+  ["shouldersCm", "Плечі", "по найширшій точці дельт, руки опущені"],
+  ["armCm", "Рука", "біцепс напружений, найширше місце"],
+  ["thighCm", "Стегно", "найширше місце, нога розслаблена"],
+];
+
+/** Заміри сантиметром раз на 2 тижні + висновок «талія проти ваги». */
+function MeasurementsCard({ day, busy, run }: CardProps) {
+  const m = day.measurements;
+  const last = m.entries[m.entries.length - 1];
+  const prev = m.entries[m.entries.length - 2];
+  const [form, setForm] = useState<Partial<Record<MeasurementField, string>> | null>(null);
+  const [showHow, setShowHow] = useState(false);
+
+  const waistPoints = m.entries
+    .filter((e) => e.waistCm != null)
+    .map((e) => ({ label: fmtDate(e.date), value: e.waistCm! }));
+
+  const save = async () => {
+    if (!form) return;
+    const values: Partial<Record<MeasurementField, number>> = {};
+    for (const [field] of MEASUREMENT_LABELS) {
+      const n = parseFloat((form[field] ?? "").replace(",", "."));
+      if (Number.isFinite(n) && n > 0) values[field] = n;
+    }
+    if (Object.keys(values).length === 0) return;
+    await run(() => api.addMeasurement(day.date, values));
+    setForm(null);
+  };
+
+  return (
+    <Section
+      title="Заміри тіла"
+      aside={m.due ? <span className="badge warn">{last ? "час замірів" : "почни заміри"}</span> : null}
+    >
+      <div className="card">
+        {last ? (
+          <>
+            <div className="muted tiny">
+              Останній замір: {fmtDate(last.date)}
+              {m.daysSinceLast != null ? ` (${m.daysSinceLast} дн. тому)` : ""}
+            </div>
+            <div className="metric-grid" style={{ marginTop: 8 }}>
+              {MEASUREMENT_LABELS.map(([field, label]) => {
+                const value = last[field];
+                const before = prev?.[field];
+                const delta = value != null && before != null ? Math.round((value - before) * 10) / 10 : null;
+                return (
+                  <div key={field}>
+                    <div className="muted tiny">{label}</div>
+                    <div style={{ fontWeight: 600, fontSize: 17 }}>{value != null ? `${fmtWeight(value)} см` : "—"}</div>
+                    {delta ? (
+                      <div className="tiny muted">
+                        {delta > 0 ? "+" : "−"}
+                        {fmtWeight(Math.abs(delta))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })}
+            </div>
+            {waistPoints.length >= 2 ? (
+              <div style={{ marginTop: 8 }}>
+                <div className="muted tiny">Талія</div>
+                <LineChart points={waistPoints} unit="см" />
+              </div>
+            ) : null}
+          </>
+        ) : (
+          <div className="muted small">
+            Сантиметр раз на 2 тижні — найкращий спосіб перевірити, що набір іде без жиру: вага росте, а талія майже ні.
+          </div>
+        )}
+
+        {m.insight ? <div className="note">{m.insight}</div> : null}
+
+        {form ? (
+          <div style={{ marginTop: 12 }}>
+            <div className="macro-grid" style={{ gridTemplateColumns: "repeat(3, 1fr)" }}>
+              {MEASUREMENT_LABELS.map(([field, label]) => (
+                <label key={field}>
+                  <span className="muted tiny">{label}, см</span>
+                  <input
+                    className="text-input center-text"
+                    type="number"
+                    inputMode="decimal"
+                    placeholder={last?.[field] != null ? fmtWeight(last[field]!) : "—"}
+                    value={form[field] ?? ""}
+                    onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                  />
+                </label>
+              ))}
+            </div>
+            <div className="btn-row">
+              <button className="btn primary" disabled={busy} onClick={() => void save()}>
+                Зберегти
+              </button>
+              <button className="btn secondary" onClick={() => setForm(null)}>
+                Скасувати
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="btn secondary" onClick={() => setForm({})}>
+            + Додати заміри
+          </button>
+        )}
+
+        <button className="link" onClick={() => setShowHow((v) => !v)}>
+          {showHow ? "Сховати" : "Як правильно міряти"}
+        </button>
+        {showHow ? (
+          <div className="note">
+            {"Зранку натще, після туалету, до тренування. Стрічка щільно, але без вдавлювання, паралельно підлозі. " +
+              "Кожен замір двічі — записуй середнє.\n\n"}
+            {MEASUREMENT_LABELS.map(([, label, how]) => `• ${label}: ${how}`).join("\n")}
+          </div>
+        ) : null}
+
+        {last ? (
+          <button
+            className="link"
+            disabled={busy}
+            onClick={async () => {
+              if (await confirmAction(`Видалити заміри від ${fmtDate(last.date)}?`)) {
+                void run(() => api.deleteMeasurement(last.id, day.date), false);
+              }
+            }}
+          >
+            Видалити останній замір
           </button>
         ) : null}
       </div>

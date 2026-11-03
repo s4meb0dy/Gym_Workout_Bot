@@ -160,6 +160,18 @@ export type Energy =
       pace: "below" | "on_track" | "above";
     };
 
+export interface Measurement {
+  id: string;
+  date: string;
+  waistCm: number | null;
+  chestCm: number | null;
+  shouldersCm: number | null;
+  armCm: number | null;
+  thighCm: number | null;
+}
+
+export type MeasurementField = "waistCm" | "chestCm" | "shouldersCm" | "armCm" | "thighCm";
+
 export interface DayData {
   date: string;
   isToday: boolean;
@@ -172,6 +184,7 @@ export interface DayData {
   recentFoods: Array<Macros & { label: string }>;
   weight: { points: Array<{ id: string; date: string; weightKg: number }> };
   energy: Energy;
+  measurements: { entries: Measurement[]; insight: string | null; due: boolean; daysSinceLast: number | null };
   profile: { heightCm: number | null; goal: Goal; weighInReminder: boolean; weighInHour: number };
   health: {
     sleepMinutes: number | null;
@@ -250,6 +263,10 @@ export const api = {
     targets: { calories: number; protein: number; waterMl: number; fat?: number; carbs?: number },
   ) =>
     request<{ day: DayData }>("PATCH", "/targets", { ...targets, date }),
+  addMeasurement: (date: string, values: Partial<Record<MeasurementField, number>>) =>
+    request<{ day: DayData }>("POST", "/measurements", { ...values, date }),
+  deleteMeasurement: (id: string, date: string) =>
+    request<{ day: DayData }>("DELETE", `/measurements/${id}?date=${date}`),
   updateProfile: (date: string, profile: { heightCm: number | null; goal: Goal; weighInReminder: boolean }) =>
     request<{ day: DayData }>("PATCH", "/profile", { ...profile, date }),
   advice: (date: string) => request<{ advice: string | null }>("POST", "/health/advice", { date }),

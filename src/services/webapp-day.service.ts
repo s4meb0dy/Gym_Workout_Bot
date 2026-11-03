@@ -2,6 +2,7 @@ import { prisma } from "../db/client";
 import { generateHealthAdvice } from "./health-coach.service";
 import { buildHealthContext, getHealthLog } from "./health.service";
 import { estimateEnergy, macroSplit, parseGoal } from "./energy.service";
+import { buildMeasurementsView } from "./measurements.service";
 import {
   getCalorieTarget,
   getMacrosForDate,
@@ -67,10 +68,11 @@ export async function buildDayView(userId: string, date: string) {
       getHealthLog(userId, date),
       getNutritionEntries(userId, shiftDateString(date, -1)),
     ]);
-  const [energy, user, reminder] = await Promise.all([
+  const [energy, user, reminder, measurements] = await Promise.all([
     estimateEnergy(userId),
     prisma.user.findUnique({ where: { id: userId } }),
     prisma.reminderSetting.findUnique({ where: { userId } }),
+    buildMeasurementsView(userId),
   ]);
 
   const toView = (e: (typeof entries)[number]) => ({
@@ -103,6 +105,7 @@ export async function buildDayView(userId: string, date: string) {
     recentFoods,
     weight,
     energy,
+    measurements,
     profile: {
       heightCm: user?.heightCm ?? null,
       goal: parseGoal(user?.goal),

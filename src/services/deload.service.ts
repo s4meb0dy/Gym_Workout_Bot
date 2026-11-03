@@ -26,9 +26,11 @@ export function countWeeksInARow(workoutsPerWeek: number[]): number {
   if (workoutsPerWeek.length === 0) return 0;
   const sorted = [...workoutsPerWeek].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)];
+  // Без стабільного графіка (менше 2 тренувань на тиждень) розвантаження не потрібне.
+  if (median < 2) return 0;
   let streak = 0;
   for (let i = workoutsPerWeek.length - 1; i >= 0; i--) {
-    if (workoutsPerWeek[i] < median * 0.6) break;
+    if (workoutsPerWeek[i] === 0 || workoutsPerWeek[i] < median * 0.6) break;
     streak++;
   }
   return streak;

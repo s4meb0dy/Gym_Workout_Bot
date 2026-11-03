@@ -4,6 +4,7 @@ import { getProteinHistory, getProteinTarget, formatDisplayDate } from "./tracki
 import { formatWeight } from "./progression";
 import { describeEnergy, estimateEnergy } from "./energy.service";
 import { getDeloadStatus } from "./deload.service";
+import { buildMeasurementsView } from "./measurements.service";
 
 export async function buildWeeklyDigest(userId: string): Promise<string> {
   const since = new Date();
@@ -62,6 +63,14 @@ export async function buildWeeklyDigest(userId: string): Promise<string> {
   }
 
   text += `\n⚡ ${describeEnergy(await estimateEnergy(userId))}\n`;
+
+  const measurements = await buildMeasurementsView(userId);
+  if (measurements.insight && measurements.entries.length > 1) {
+    text += `📏 ${measurements.insight}\n`;
+  }
+  if (measurements.due) {
+    text += "📏 Час замірів: завтра зранку натще — талія, груди, плечі, рука, стегно (вкладка «День»).\n";
+  }
 
   if (volume.length > 0) {
     text += "\n<b>Обсяг по м'язах:</b>\n";

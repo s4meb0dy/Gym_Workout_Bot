@@ -38,6 +38,7 @@ import {
 } from "../services/workout.service";
 import { buildAdvice, buildDayView, isValidDay } from "../services/webapp-day.service";
 import { parseGoal } from "../services/energy.service";
+import { parseMeasurement } from "../services/measurements.service";
 import {
   addNutritionEntry,
   addWater,
@@ -535,6 +536,32 @@ export function registerWebAppRoutes(app: express.Application): void {
         ...(carbs !== undefined ? { carbsTarget: carbs } : {}),
       });
       await sendDay(res, user, dayOf(b.date));
+    }),
+  );
+
+  api.post(
+    "/measurements",
+    route(async (req, res, user) => {
+      const data = parseMeasurement(req.body);
+      if (!data) {
+        res.status(400).json({ error: "invalid_measurement" });
+        return;
+      }
+      await prisma.bodyMeasurement.create({ data: { userId: user.id, ...data } });
+      await sendDay(res, user, dayOf(req.body?.date));
+    }),
+  );
+
+  api.delete(
+    "/measurements/:id",
+    route(async (req, res, user) => {
+      const row = await prisma.bodyMeasurement.findFirst({ where: { id: String(req.params.id), userId: user.id } });
+      if (!row) {
+        res.status(404).json({ error: "measurement_not_found" });
+        return;
+      }
+      await prisma.bodyMeasurement.delete({ where: { id: row.id } });
+      await sendDay(res, user, dayOf(req.query.date));
     }),
   );
 
