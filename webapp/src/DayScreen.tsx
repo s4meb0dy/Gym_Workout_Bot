@@ -434,7 +434,8 @@ function EnergyBlock({ day, busy, run }: CardProps) {
           ? "зашвидко — зайве піде в жир"
           : "швидше за ціль";
   const confidence = { high: "висока", medium: "середня", low: "низька" }[e.confidence];
-  const differs = Math.abs(e.recommendedCalories - day.targets.calories) >= 50;
+  // На грубій оцінці (мало зважувань) ціль не змінюємо — легко помилитися на сотні ккал.
+  const differs = e.confidence !== "low" && Math.abs(e.recommendedCalories - day.targets.calories) >= 50;
 
   return (
     <div className="note" style={{ color: "var(--text)" }}>
