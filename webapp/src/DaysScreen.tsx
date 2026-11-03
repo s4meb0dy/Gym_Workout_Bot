@@ -6,10 +6,11 @@ import { haptic } from "./telegram";
 interface Props {
   days: DayView[];
   firstName: string | null;
+  deloadAdvice: string | null;
   onStarted: (workout: WorkoutView) => void;
 }
 
-export function DaysScreen({ days, firstName, onStarted }: Props) {
+export function DaysScreen({ days, firstName, deloadAdvice, onStarted }: Props) {
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,6 +34,8 @@ export function DaysScreen({ days, firstName, onStarted }: Props) {
         <div className="muted small">Привіт{firstName ? `, ${firstName}` : ""}</div>
         <h1 className="title">Обери тренування</h1>
       </div>
+
+      {deloadAdvice ? <div className="note warn">🧘 {deloadAdvice}</div> : null}
 
       {days.map((day) => (
         <button

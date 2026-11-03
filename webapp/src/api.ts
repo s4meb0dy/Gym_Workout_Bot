@@ -201,7 +201,12 @@ async function request<T>(method: string, path: string, body?: unknown): Promise
 
 export const api = {
   state: () =>
-    request<{ firstName: string | null; days: DayView[]; workout: WorkoutView | null }>("GET", "/state"),
+    request<{
+      firstName: string | null;
+      days: DayView[];
+      workout: WorkoutView | null;
+      deload: { weeksInARow: number; due: boolean; advice: string | null };
+    }>("GET", "/state"),
   start: (dayNumber: number) => request<{ workout: WorkoutView }>("POST", "/workout/start", { dayNumber }),
   logSet: (exerciseId: number, weight: number, reps: number) =>
     request<{ workout: WorkoutView; restSeconds: number; record: string | null }>("POST", "/workout/sets", {

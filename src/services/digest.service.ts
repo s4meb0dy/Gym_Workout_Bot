@@ -3,6 +3,7 @@ import { getWeeklyVolume } from "./analytics.service";
 import { getProteinHistory, getProteinTarget, formatDisplayDate } from "./tracking.service";
 import { formatWeight } from "./progression";
 import { describeEnergy, estimateEnergy } from "./energy.service";
+import { getDeloadStatus } from "./deload.service";
 
 export async function buildWeeklyDigest(userId: string): Promise<string> {
   const since = new Date();
@@ -24,6 +25,10 @@ export async function buildWeeklyDigest(userId: string): Promise<string> {
   const target = await getProteinTarget(userId);
 
   let text = "📅 <b>Тижневий підсумок</b>\n\n";
+  const deload = await getDeloadStatus(userId);
+  if (deload.advice) {
+    text += `🧘 <b>Наступний тиждень — розвантажувальний.</b> ${deload.advice}\n\n`;
+  }
 
   text += `🏋️ Тренувань: <b>${workouts}</b>\n`;
   text += `📊 Робочих підходів: <b>${totalSets}</b>\n`;

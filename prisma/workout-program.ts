@@ -31,7 +31,7 @@ export const REST_MACHINE = 90;
 /** Мала ізоляція, плечі та руки */
 export const REST_ISOLATION = 60;
 
-export const PROGRAM_VERSION = 12;
+export const PROGRAM_VERSION = 13;
 
 /**
  * Блок без ваги: один "підхід"-чекліст. Ваги немає, таймера відпочинку немає,
@@ -218,14 +218,16 @@ export const workoutProgram: WorkoutDaySeed[] = [
         block: "Гантелі",
         targetSets: 3,
         targetRepsMin: 12,
-        targetRepsMax: 15,
+        targetRepsMax: 20,
         bodyPart: "upper",
-        progressionStep: 2,
+        progressionStep: 1,
         restTimeInSeconds: REST_ISOLATION,
         baselineWeightMin: 8,
         baselineWeightMax: 8,
         baselineNote: "2×8 кг",
-        technique: "Середня дельта створює ширину плечей — окремий вертикальний жим не потрібен.",
+        technique:
+          "Середня дельта створює ширину плечей. Прогресія спершу повторами: коли всі підходи по 20 — бери +1 кг " +
+          "(+2 кг до 8-кілограмових гантелей — це +25%, такий стрибок не виходить).",
       },
       {
         name: "Канатні розгинання на трицепс у кросовері",
@@ -251,18 +253,20 @@ export const workoutProgram: WorkoutDaySeed[] = [
     exercises: [
       WARMUP_LOWER_QUAD,
       {
-        name: "Goblet Squats (присідання з гантеллю перед грудьми)",
-        block: "Гантелі",
+        name: "Присідання в сміті",
+        block: "Тренажери",
         targetSets: 3,
         targetRepsMin: 8,
         targetRepsMax: 12,
         bodyPart: "lower",
-        progressionStep: 2,
+        progressionStep: 2.5,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 30,
-        baselineWeightMax: 30,
-        baselineNote: "30 кг",
-        technique: "Кор свіжий — тримай жорсткий брейс. Прес перенесено в кінець тренування.",
+        baselineWeightMin: 40,
+        baselineWeightMax: 40,
+        baselineNote: "40 кг на грифі",
+        technique:
+          "Заміна гоблету: той упирався в найважчу гантель (30 кг). Ступні трохи попереду грифа, глибина — " +
+          "стегна паралельно підлозі або нижче, жорсткий брейс. Страхувальні упори — трохи нижче нижньої точки.",
       },
       {
         name: "Жим ногами в тренажері (Leg Press)",
@@ -387,22 +391,24 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 8,
         baselineWeightMax: 8,
         baselineNote: "2×8 кг",
+        technique: "Суперсет з махами в сторони на блоці: по підходу кожної без відпочинку, потім 60 с — економить ~5 хв.",
       },
       {
         name: "Махи в сторони на блоці (кросовер)",
         block: "Тренажери",
         targetSets: 3,
         targetRepsMin: 12,
-        targetRepsMax: 15,
+        targetRepsMax: 20,
         bodyPart: "upper",
-        progressionStep: 2,
+        progressionStep: 1,
         restTimeInSeconds: REST_ISOLATION,
         baselineWeightMin: 5,
         baselineWeightMax: 5,
         baselineNote: "5 кг на блоці",
         technique:
           "Друга сесія середньої дельти на тиждень — ширина плечей. Блок дає навантаження і внизу амплітуди, " +
-          "на відміну від гантелей. Однією рукою, корпус трохи від блоку.",
+          "на відміну від гантелей. Однією рукою, корпус трохи від блоку. Суперсет із задньою дельтою. " +
+          "Прогресія повторами до 20, тоді +1 крок блоку.",
       },
       {
         name: "Молоткові підйоми (Hammer Curls)",
@@ -416,7 +422,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 14,
         baselineWeightMax: 14,
         baselineNote: "2×14 кг",
-        technique: "3 підходи — біцепс і брахіораліс для товщини руки.",
+        technique: "3 підходи — біцепс і брахіораліс для товщини руки. Суперсет із розгинаннями з-за голови.",
       },
       {
         name: "Розгинання з-за голови на блоці (трицепс)",
@@ -430,7 +436,9 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 15,
         baselineWeightMax: 15,
         baselineNote: "15 кг",
-        technique: "Довга голівка трицепса росте найкраще в розтягнутому положенні — над головою, лікті вперед.",
+        technique:
+          "Довга голівка трицепса росте найкраще в розтягнутому положенні — над головою, лікті вперед. " +
+          "Суперсет із молотками: біцепс і трицепс не заважають одне одному.",
       },
       POSTURE_BLOCK,
     ],
@@ -442,19 +450,20 @@ export const workoutProgram: WorkoutDaySeed[] = [
     exercises: [
       WARMUP_LOWER_POSTERIOR,
       {
-        name: "Румунська тяга з гантелями",
-        block: "Гантелі",
+        name: "Румунська тяга зі штангою",
+        block: "Штанга",
         targetSets: 3,
         targetRepsMin: 8,
         targetRepsMax: 12,
         bodyPart: "lower",
-        progressionStep: 2,
+        progressionStep: 2.5,
         restTimeInSeconds: REST_HEAVY,
-        baselineWeightMin: 26,
-        baselineWeightMax: 26,
-        baselineNote: "2×26 кг",
+        baselineWeightMin: 60,
+        baselineWeightMax: 60,
+        baselineNote: "60 кг",
         technique:
-          "Спина нейтральна, таз назад. Кор свіжий — саме тому прес перенесено в кінець дня.",
+          "Заміна гантелей (2×28 кг упирались у хват). Спина нейтральна, таз назад, гриф ковзає по стегнах. " +
+          "Кистьові лямки, якщо хват здається раніше за задню поверхню.",
       },
       {
         name: "Розгинання ніг сидячи (Leg Extensions)",

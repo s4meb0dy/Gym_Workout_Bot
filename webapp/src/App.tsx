@@ -12,7 +12,7 @@ import { WorkoutScreen } from "./WorkoutScreen";
 type WorkoutState =
   | { kind: "loading" }
   | { kind: "error"; message: string }
-  | { kind: "days"; days: DayView[]; firstName: string | null }
+  | { kind: "days"; days: DayView[]; firstName: string | null; deloadAdvice: string | null }
   | { kind: "workout"; workout: WorkoutView }
   | { kind: "summary"; summary: Summary };
 
@@ -25,7 +25,7 @@ function WorkoutTab({ visible }: { visible: boolean }) {
       setState(
         data.workout
           ? { kind: "workout", workout: data.workout }
-          : { kind: "days", days: data.days, firstName: data.firstName },
+          : { kind: "days", days: data.days, firstName: data.firstName, deloadAdvice: data.deload.advice },
       );
     } catch (error) {
       setState({ kind: "error", message: (error as Error).message });
@@ -55,6 +55,7 @@ function WorkoutTab({ visible }: { visible: boolean }) {
         <DaysScreen
           days={state.days}
           firstName={state.firstName}
+          deloadAdvice={state.deloadAdvice}
           onStarted={(workout) => setState({ kind: "workout", workout })}
         />
       );

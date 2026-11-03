@@ -54,6 +54,7 @@ import {
   upsertReminderSetting,
 } from "../services/tracking.service";
 import { detectSetRecord } from "../services/records.service";
+import { getDeloadStatus } from "../services/deload.service";
 import { requireWebAppUser } from "./webapp-auth";
 
 let botApi: Api | null = null;
@@ -159,8 +160,12 @@ export function registerWebAppRoutes(app: express.Application): void {
   api.get(
     "/state",
     route(async (_req, res, user) => {
-      const [days, workout] = await Promise.all([buildDaysView(user.id), buildWorkoutView(user.id)]);
-      res.json({ firstName: user.firstName, days, workout });
+      const [days, workout, deload] = await Promise.all([
+        buildDaysView(user.id),
+        buildWorkoutView(user.id),
+        getDeloadStatus(user.id),
+      ]);
+      res.json({ firstName: user.firstName, days, workout, deload });
     }),
   );
 
