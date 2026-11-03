@@ -5,6 +5,7 @@ import { nutritionEntryKeyboard, nutritionListKeyboard } from "../keyboards";
 import { findOrCreateUser } from "../../services/workout.service";
 import {
   addNutritionEntry,
+  copyNutritionEntries,
   deleteNutritionEntry,
   formatDisplayDate,
   getCalorieTarget,
@@ -120,9 +121,51 @@ export function registerFoodHandlers(bot: Bot<BotContext>) {
 
     const keyboard = new InlineKeyboard()
       .text("✍️ Ввести вручну", "food_manual")
+      .text("↺ Як учора", "food_yday")
       .row()
       .text("📋 Записи по днях", `nl_list:${localDateString()}`);
     await ctx.reply("🍽 Додай КБЖВ вручну або переглянь записи:", { reply_markup: keyboard });
+  });
+
+  bot.callbackQuery("food_yday", async (ctx) => {
+    await ctx.answerCallbackQuery();
+    if (!ctx.from) return;
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const entries = await getNutritionEntries(user.id, daysAgoDateString(1));
+    if (entries.length === 0) {
+      await ctx.reply("Учора записів їжі немає.");
+      return;
+    }
+
+    const total = Math.round(entries.reduce((sum, e) => sum + e.calories, 0));
+    const keyboard = new InlineKeyboard();
+    for (const e of entries.slice(0, 15)) {
+      keyboard.text(`+ ${nutritionEntryLabel(e)}`, `fy:${e.id}`).row();
+    }
+    keyboard.text(`✅ Додати все (${total} ккал)`, "fy_all");
+
+    await ctx.reply("↺ <b>Учора</b> — обери, що додати на сьогодні:", {
+      parse_mode: "HTML",
+      reply_markup: keyboard,
+    });
+  });
+
+  bot.callbackQuery(/^fy:(.+)$/, async (ctx) => {
+    if (!ctx.from) return;
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const copied = await copyNutritionEntries(user.id, [ctx.match![1]], localDateString());
+    await ctx.answerCallbackQuery({ text: copied ? "Додано" : "Запис не знайдено" });
+    if (copied) await showDailyTotals(ctx, user.id);
+  });
+
+  bot.callbackQuery("fy_all", async (ctx) => {
+    if (!ctx.from) return;
+    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
+    const entries = await getNutritionEntries(user.id, daysAgoDateString(1));
+    const copied = await copyNutritionEntries(user.id, entries.map((e) => e.id), localDateString());
+    await ctx.answerCallbackQuery({ text: `Додано ${copied}` });
+    await ctx.deleteMessage().catch(() => undefined);
+    await showDailyTotals(ctx, user.id);
   });
 
   bot.callbackQuery("food_manual", async (ctx) => {

@@ -15,6 +15,7 @@ export { formatWarmupPrompt, isWarmupExercise } from "./progression";
 export type ExerciseWithDay = Exercise & { workoutDay: WorkoutDay };
 
 export interface WorkoutSummary {
+  completedAt: Date;
   totalSets: number;
   tonnage: number;
   records: Array<{ exerciseName: string; weight: number; reps: number }>;
@@ -436,7 +437,13 @@ export async function deleteLastSet(sessionId: string) {
   return last;
 }
 
-export async function completeWorkoutSession(sessionId: string): Promise<WorkoutSummary> {
+/** Якщо завершують пізніше, ніж через стільки після останнього підходу, — час завершення = останній підхід. */
+const LATE_FINISH_MS = 30 * 60 * 1000;
+
+export async function completeWorkoutSession(
+  sessionId: string,
+  completedAt?: Date,
+): Promise<WorkoutSummary> {
   const session = await prisma.workoutSession.findUniqueOrThrow({
     where: { id: sessionId },
     include: {
@@ -447,9 +454,17 @@ export async function completeWorkoutSession(sessionId: string): Promise<Workout
     },
   });
 
+  const lastSetAt = session.sets.reduce<Date | null>(
+    (latest, s) => (!latest || s.createdAt > latest ? s.createdAt : latest),
+    null,
+  );
+  const now = new Date();
+  const finishedAt =
+    completedAt ?? (lastSetAt && now.getTime() - lastSetAt.getTime() > LATE_FINISH_MS ? lastSetAt : now);
+
   await prisma.workoutSession.update({
     where: { id: sessionId },
-    data: { completedAt: new Date() },
+    data: { completedAt: finishedAt },
   });
 
   const validSets = session.sets.filter((s) => s.weight > 0 && s.reps > 0);
@@ -488,7 +503,7 @@ export async function completeWorkoutSession(sessionId: string): Promise<Workout
     }
   }
 
-  return { totalSets, tonnage, records };
+  return { completedAt: finishedAt, totalSets, tonnage, records };
 }
 
 export async function getUserStats(userId: string) {

@@ -40,6 +40,7 @@ import { buildAdvice, buildDayView, isValidDay } from "../services/webapp-day.se
 import {
   addNutritionEntry,
   addWater,
+  copyNutritionEntries,
   deleteBodyWeight,
   deleteNutritionEntry,
   getBodyWeightById,
@@ -239,7 +240,7 @@ export function registerWebAppRoutes(app: express.Application): void {
       }
       clearRest(Number(user.telegramId));
       const summary = await completeWorkoutSession(session.id);
-      const durationMinutes = Math.round((Date.now() - session.startedAt.getTime()) / 60000);
+      const durationMinutes = Math.round((summary.completedAt.getTime() - session.startedAt.getTime()) / 60000);
       res.json({ summary: { ...summary, durationMinutes, dayName: session.workoutDay.name } });
     }),
   );
@@ -396,6 +397,20 @@ export function registerWebAppRoutes(app: express.Application): void {
       }
       const date = dayOf(req.body?.date);
       await addNutritionEntry(user.id, entry, date);
+      await sendDay(res, user, date);
+    }),
+  );
+
+  api.post(
+    "/nutrition/copy",
+    route(async (req, res, user) => {
+      const ids = Array.isArray(req.body?.ids) ? (req.body.ids as unknown[]).map(String).slice(0, 50) : [];
+      if (ids.length === 0) {
+        res.status(400).json({ error: "invalid_copy" });
+        return;
+      }
+      const date = dayOf(req.body?.date);
+      await copyNutritionEntries(user.id, ids, date);
       await sendDay(res, user, date);
     }),
   );

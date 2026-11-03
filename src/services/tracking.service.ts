@@ -123,6 +123,34 @@ export async function updateNutritionEntry(id: string, entry: MacroEntry) {
   });
 }
 
+/** Копіює записи їжі (лише свої) на інший день — для «Як учора». Повертає кількість. */
+export async function copyNutritionEntries(userId: string, ids: string[], toDate: string): Promise<number> {
+  const entries = await prisma.nutritionLog.findMany({
+    where: { userId, id: { in: ids } },
+    orderBy: { recordedAt: "asc" },
+  });
+  for (const e of entries) {
+    await prisma.nutritionLog.create({
+      data: {
+        userId,
+        date: toDate,
+        proteinGrams: e.proteinGrams,
+        calories: e.calories,
+        fatGrams: e.fatGrams,
+        carbsGrams: e.carbsGrams,
+        label: e.label,
+      },
+    });
+  }
+  return entries.length;
+}
+
+export function shiftDateString(date: string, deltaDays: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + deltaDays);
+  return d.toISOString().slice(0, 10);
+}
+
 export async function deleteNutritionEntry(id: string) {
   return prisma.nutritionLog.delete({ where: { id } });
 }

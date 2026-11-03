@@ -162,6 +162,10 @@ function NutritionCard({ day, busy, run }: CardProps) {
           </div>
         ) : null}
 
+        {day.previousEntries.length > 0 && !form ? (
+          <YesterdayPanel day={day} busy={busy} run={run} />
+        ) : null}
+
         {day.entries.length > 0 ? (
           <div style={{ marginTop: 12 }}>
             {day.entries.map((e) => (
@@ -191,6 +195,57 @@ function NutritionCard({ day, busy, run }: CardProps) {
         )}
       </div>
     </Section>
+  );
+}
+
+/** «Як учора»: записи попереднього дня — додати все разом або окремі. */
+function YesterdayPanel({ day, busy, run }: CardProps) {
+  const [open, setOpen] = useState(false);
+  const prev = day.previousEntries;
+  const total = prev.reduce((sum, e) => sum + e.calories, 0);
+
+  if (!open) {
+    return (
+      <button className="link" onClick={() => setOpen(true)}>
+        ↺ Як учора ({prev.length} записів · {fmtNumber(total)} ккал)
+      </button>
+    );
+  }
+
+  return (
+    <div className="note" style={{ color: "var(--text)" }}>
+      <div className="row spread">
+        <span className="small muted">Попередній день</span>
+        <button className="link" style={{ marginTop: 0 }} onClick={() => setOpen(false)}>
+          Сховати
+        </button>
+      </div>
+      {prev.map((e) => (
+        <div key={e.id} className="entry" style={{ cursor: "default" }}>
+          <span className="grow ellipsis">{e.label}</span>
+          <span className="muted small">{e.calories > 0 ? `${e.calories} ккал` : `Б ${e.protein}`}</span>
+          <button
+            className="rest-btn"
+            style={{ padding: "4px 10px" }}
+            disabled={busy}
+            onClick={() => void run(() => api.copyFoods(day.date, [e.id]))}
+          >
+            +
+          </button>
+        </div>
+      ))}
+      <button
+        className="btn primary"
+        style={{ height: 42, fontSize: 15 }}
+        disabled={busy}
+        onClick={async () => {
+          await run(() => api.copyFoods(day.date, prev.map((e) => e.id)));
+          setOpen(false);
+        }}
+      >
+        Додати все ({fmtNumber(total)} ккал)
+      </button>
+    </div>
   );
 }
 

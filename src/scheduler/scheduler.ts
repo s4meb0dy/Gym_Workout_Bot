@@ -10,6 +10,7 @@ import {
 import { getWorkoutDayByNumber } from "../services/workout.service";
 import { buildBackupFile, backupExists } from "../services/backup.service";
 import { buildWeeklyDigest } from "../services/digest.service";
+import { checkStaleWorkouts } from "./stale-workouts";
 
 const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
   Mon: 1,
@@ -138,6 +139,10 @@ export function startScheduler(bot: Bot<BotContext>): void {
     },
     { timezone: config.timezone },
   );
+
+  cron.schedule("*/10 * * * *", () => {
+    checkStaleWorkouts(bot).catch((error) => console.error("Stale workout check failed:", error));
+  });
 
   console.log(`Scheduler started (timezone: ${config.timezone}).`);
 }

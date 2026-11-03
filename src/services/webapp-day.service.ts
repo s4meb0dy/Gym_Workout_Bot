@@ -9,6 +9,7 @@ import {
   getWaterForDate,
   getWaterTarget,
   localDateString,
+  shiftDateString,
 } from "./tracking.service";
 
 export function isValidDay(date: unknown): date is string {
@@ -52,7 +53,7 @@ async function getWeightView(userId: string) {
 }
 
 export async function buildDayView(userId: string, date: string) {
-  const [macros, calorieTarget, proteinTarget, waterTarget, entries, water, recentFoods, weight, health] =
+  const [macros, calorieTarget, proteinTarget, waterTarget, entries, water, recentFoods, weight, health, previous] =
     await Promise.all([
       getMacrosForDate(userId, date),
       getCalorieTarget(userId),
@@ -63,21 +64,25 @@ export async function buildDayView(userId: string, date: string) {
       getRecentFoods(userId),
       getWeightView(userId),
       getHealthLog(userId, date),
+      getNutritionEntries(userId, shiftDateString(date, -1)),
     ]);
+
+  const toView = (e: (typeof entries)[number]) => ({
+    id: e.id,
+    label: e.label ?? (e.calories > 0 ? "Їжа" : "Білок"),
+    calories: Math.round(e.calories),
+    protein: Math.round(e.proteinGrams),
+    fat: Math.round(e.fatGrams),
+    carbs: Math.round(e.carbsGrams),
+  });
 
   return {
     date,
     isToday: date === localDateString(),
     targets: { calories: calorieTarget, protein: proteinTarget, waterMl: waterTarget },
     macros,
-    entries: entries.map((e) => ({
-      id: e.id,
-      label: e.label ?? (e.calories > 0 ? "Їжа" : "Білок"),
-      calories: Math.round(e.calories),
-      protein: Math.round(e.proteinGrams),
-      fat: Math.round(e.fatGrams),
-      carbs: Math.round(e.carbsGrams),
-    })),
+    entries: entries.map(toView),
+    previousEntries: previous.map(toView),
     waterMl: water,
     recentFoods,
     weight,

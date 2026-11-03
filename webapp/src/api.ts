@@ -135,6 +135,7 @@ export interface DayData {
   targets: { calories: number; protein: number; waterMl: number };
   macros: Macros;
   entries: FoodEntry[];
+  previousEntries: FoodEntry[];
   waterMl: number;
   recentFoods: Array<Macros & { label: string }>;
   weight: { points: Array<{ id: string; date: string; weightKg: number }> };
@@ -192,6 +193,8 @@ export const api = {
   day: (date?: string) => request<{ day: DayData }>("GET", `/day${date ? `?date=${date}` : ""}`),
   addFood: (date: string, food: Macros & { label: string }) =>
     request<{ day: DayData }>("POST", "/nutrition", { ...food, date }),
+  copyFoods: (date: string, ids: string[]) =>
+    request<{ day: DayData }>("POST", "/nutrition/copy", { date, ids }),
   updateFood: (id: string, food: Macros & { label: string }) =>
     request<{ day: DayData }>("PATCH", `/nutrition/${id}`, food),
   deleteFood: (id: string) => request<{ day: DayData }>("DELETE", `/nutrition/${id}`),
