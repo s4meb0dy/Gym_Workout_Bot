@@ -21,6 +21,8 @@ if [ "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)" ]; then
 fi
 
 echo "==> $(date -Is) deploying $(git rev-parse --short origin/main)"
+# npm на VM може переписати lock-файли — повертаємо їх, інакше pull відмовиться оновлювати.
+git checkout -- package-lock.json webapp/package-lock.json 2>/dev/null || true
 git pull -q --ff-only origin main
 bash deploy/setup.sh
 echo "==> $(date -Is) deploy finished"
