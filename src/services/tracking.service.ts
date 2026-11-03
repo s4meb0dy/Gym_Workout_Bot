@@ -265,6 +265,8 @@ export async function upsertReminderSetting(
     supplementsHour: number;
     waterEnabled: boolean;
     waterTargetMl: number;
+    weightEnabled: boolean;
+    weightHour: number;
   }> = {},
 ) {
   return prisma.reminderSetting.upsert({

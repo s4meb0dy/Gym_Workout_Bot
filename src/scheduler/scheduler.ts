@@ -11,6 +11,9 @@ import { getWorkoutDayByNumber } from "../services/workout.service";
 import { buildBackupFile, backupExists } from "../services/backup.service";
 import { buildWeeklyDigest } from "../services/digest.service";
 import { checkStaleWorkouts } from "./stale-workouts";
+import { InlineKeyboard } from "grammy";
+import { getWebAppUrl } from "../bot/webapp-button";
+import { hasWeighedToday } from "../services/energy.service";
 
 const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
   Mon: 1,
@@ -70,6 +73,19 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
             { parse_mode: "HTML" },
           );
         }
+      }
+
+      if (setting.weightEnabled && hour === setting.weightHour && !(await hasWeighedToday(setting.userId))) {
+        const url = getWebAppUrl();
+        await bot.api.sendMessage(
+          chatId,
+          "⚖️ Зважся натще — після туалету, до їжі й води. Щоденні зважування дають точну норму калорій для набору без жиру.\n" +
+            "Записати: <code>/weight 70.2</code> або у вкладці «День».",
+          {
+            parse_mode: "HTML",
+            reply_markup: url ? new InlineKeyboard().webApp("📱 Записати в застосунку", url) : undefined,
+          },
+        );
       }
 
       if (setting.supplementsEnabled && hour === setting.supplementsHour) {

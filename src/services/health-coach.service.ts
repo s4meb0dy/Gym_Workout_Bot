@@ -1,15 +1,38 @@
 import { generateGeminiText, isGeminiEnabled } from "./gemini.client";
 import { HealthContext, formatSleep } from "./health.service";
+import { GOAL_LABELS, describeEnergy } from "./energy.service";
 
-const COACH_SYSTEM = `Ти — персональний коуч зі здоров'я та силових тренувань.
-Користувач: чоловік ~182 см, ціль рекомпозиція ~75 кг, білок ~150 г/день, силовий спліт 4 дні/тиждень.
+function buildCoachSystem(ctx: HealthContext): string {
+  const profile = [
+    ctx.heightCm ? `зріст ${ctx.heightCm} см` : null,
+    ctx.latestWeightKg ? `вага ${ctx.latestWeightKg} кг` : null,
+    `мета — ${GOAL_LABELS[ctx.goal]}`,
+    `ціль ${ctx.calorieTarget} ккал і ${ctx.proteinTarget} г білка на день`,
+    "силовий спліт 4 дні/тиждень",
+  ]
+    .filter(Boolean)
+    .join(", ");
+
+  const goalRules =
+    ctx.goal === "lean_bulk"
+      ? "Мета — набір м'язів без жиру: невеликий профіцит (+150–250 ккал до норми), приріст ~0.5–1 кг/місяць, " +
+        "білок 1.8–2.2 г/кг, прогресія навантажень у залі. Якщо вага падає або стоїть — радь трохи додати калорій; " +
+        "якщо росте швидше ~0.35%/тиждень — трохи зменшити."
+      : ctx.goal === "cut"
+        ? "Мета — сушка: помірний дефіцит, збереження сили й білка ~2 г/кг."
+        : "Мета — підтримка ваги: калорії на рівні норми, стабільна вага.";
+
+  return `Ти — персональний коуч зі здоров'я та силових тренувань.
+Користувач: ${profile}.
+${goalRules}
 Давай короткі практичні поради українською (5–8 речень):
 - сон, відновлення, пульс, HRV
 - чи варто тренуватись сьогодні або зменшити інтенсивність
-- білок, вода, активність
+- калорії й білок відносно мети, вода, активність
 - коли лягати спати
 Без медичних діагнозів. Якщо показники тривожні — порадь звернутись до лікаря.
 Не використовуй markdown-заголовки, лише текст з емодзі для структури.`;
+}
 
 function ruleBasedAdvice(ctx: HealthContext): string {
   const tips: string[] = [];
@@ -48,6 +71,21 @@ function ruleBasedAdvice(ctx: HealthContext): string {
     tips.push("🌙 Спробуй лягти сьогодні на 30–45 хв раніше.");
   }
 
+  const energy = ctx.energy;
+  if (!("missing" in energy) && ctx.goal === "lean_bulk") {
+    if (energy.pace === "below") {
+      tips.push(
+        `⚖️ Вага ${energy.weeklyChangeKg > 0 ? "+" : ""}${energy.weeklyChangeKg} кг/тиждень — для набору замало. ` +
+          `Підніми калорії до ~${energy.recommendedCalories} ккал.`,
+      );
+    } else if (energy.pace === "above") {
+      tips.push(
+        `⚖️ Вага +${energy.weeklyChangeKg} кг/тиждень — зашвидко, частина піде в жир. ` +
+          `Зменш до ~${energy.recommendedCalories} ккал.`,
+      );
+    }
+  }
+
   if (tips.length === 0) {
     tips.push("✅ Показники в нормі — тримай режим: сон, білок, вода, тренування за планом.");
   }
@@ -68,6 +106,8 @@ function buildCoachPrompt(ctx: HealthContext): string {
     `- Хв тренування: ${ctx.metrics.workoutMinutes ?? "немає"}\n\n` +
     `Контекст з бота:\n` +
     `- Вага: ${ctx.latestWeightKg ?? "немає"} кг\n` +
+    `- Калорії вчора: ${ctx.caloriesYesterday ?? "немає"}/${ctx.calorieTarget} ккал\n` +
+    `- Енергобаланс за даними ваги і харчування: ${describeEnergy(ctx.energy)}\n` +
     `- Білок вчора: ${ctx.proteinYesterday ?? "немає"}/${ctx.proteinTarget} г\n` +
     `- Вода вчора: ${ctx.waterYesterdayMl ?? "немає"}/${ctx.waterTargetMl} мл\n` +
     `- Тренувань за тиждень: ${ctx.workoutsThisWeek}\n` +
@@ -84,7 +124,7 @@ export async function generateHealthAdvice(ctx: HealthContext): Promise<string> 
   }
 
   try {
-    return await generateGeminiText(COACH_SYSTEM, buildCoachPrompt(ctx), { temperature: 0.5 });
+    return await generateGeminiText(buildCoachSystem(ctx), buildCoachPrompt(ctx), { temperature: 0.5 });
   } catch (error) {
     console.error("Health coach Gemini failed:", error);
     return ruleBasedAdvice(ctx);

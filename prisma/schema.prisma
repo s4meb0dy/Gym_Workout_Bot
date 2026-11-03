@@ -13,6 +13,8 @@ model User {
   username        String?
   firstName       String?
   healthSyncToken String?          @unique
+  heightCm        Int?
+  goal            String           @default("lean_bulk") // "lean_bulk" | "maintain" | "cut"
   createdAt       DateTime         @default(now())
   sessions        WorkoutSession[]
   bodyWeights     BodyWeight[]
@@ -94,6 +96,8 @@ model ReminderSetting {
   supplementsHour    Int     @default(21)
   waterEnabled       Boolean @default(true)
   waterTargetMl      Int     @default(3000)
+  weightEnabled      Boolean @default(true)
+  weightHour         Int     @default(8)
 }
 
 model WorkoutDay {

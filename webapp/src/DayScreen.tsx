@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { api, DayData, FoodEntry, Macros } from "./api";
+import { api, DayData, FoodEntry, Goal, Macros } from "./api";
 import { LineChart } from "./charts";
 import { LoadState, Section, Stepper, useLoad } from "./components";
 import { fmtDate, fmtNumber, fmtWeight } from "./format";
@@ -375,6 +375,8 @@ function WeightCard({ day, busy, run }: CardProps) {
           </div>
         ) : null}
 
+        <EnergyBlock day={day} busy={busy} run={run} />
+
         <div className="row" style={{ marginTop: 10 }}>
           <div className="grow">
             <Stepper value={input} step={0.1} min={30} max={300} unit="кг" onChange={setInput} />
@@ -403,6 +405,78 @@ function WeightCard({ day, busy, run }: CardProps) {
         ) : null}
       </div>
     </Section>
+  );
+}
+
+const GOAL_LABELS: Record<Goal, string> = {
+  lean_bulk: "Набір без жиру",
+  maintain: "Підтримка",
+  cut: "Сушка",
+};
+
+/** Справжня норма калорій за трендом ваги й з'їденим + рекомендація під мету. */
+function EnergyBlock({ day, busy, run }: CardProps) {
+  const e = day.energy;
+  if (e.missing) {
+    return <div className="note">⚡ {e.hint}</div>;
+  }
+
+  const sign = e.weeklyChangeKg > 0 ? "+" : "";
+  const paceColor = e.pace === "on_track" ? "var(--success)" : "var(--warn)";
+  const paceText =
+    e.pace === "on_track"
+      ? "темп відповідає меті"
+      : e.pace === "below"
+        ? e.goal === "lean_bulk"
+          ? "для набору замало"
+          : "повільніше за ціль"
+        : e.goal === "lean_bulk"
+          ? "зашвидко — зайве піде в жир"
+          : "швидше за ціль";
+  const confidence = { high: "висока", medium: "середня", low: "низька" }[e.confidence];
+  const differs = Math.abs(e.recommendedCalories - day.targets.calories) >= 50;
+
+  return (
+    <div className="note" style={{ color: "var(--text)" }}>
+      <div className="row spread">
+        <span className="small muted">Норма підтримки</span>
+        <span className="tiny muted">точність: {confidence}</span>
+      </div>
+      <div className="big-num">≈ {fmtNumber(e.tdee)} ккал</div>
+      <div className="small" style={{ marginTop: 4 }}>
+        Вага <b style={{ color: paceColor }}>{sign}{fmtWeight(e.weeklyChangeKg)} кг/тиждень</b> — {paceText}
+      </div>
+      <div className="tiny muted" style={{ marginTop: 2 }}>
+        За {e.periodDays} дн.: {e.weighIns} зважувань, їжа записана {e.loggedDays} дн., середнє {fmtNumber(e.avgIntake)} ккал
+      </div>
+      <div className="small" style={{ marginTop: 8 }}>
+        {GOAL_LABELS[e.goal]} (~{e.targetWeeklyChangeKg > 0 ? "+" : ""}
+        {fmtWeight(e.targetWeeklyChangeKg)} кг/тиждень): <b>{fmtNumber(e.recommendedCalories)} ккал/день</b>
+      </div>
+      {differs ? (
+        <button
+          className="btn secondary"
+          style={{ height: 40, fontSize: 14, marginTop: 8 }}
+          disabled={busy}
+          onClick={() =>
+            void run(() =>
+              api.updateTargets(day.date, {
+                calories: e.recommendedCalories,
+                protein: day.targets.protein,
+                waterMl: day.targets.waterMl,
+              }),
+            )
+          }
+        >
+          Зробити ціллю {fmtNumber(e.recommendedCalories)} ккал (зараз {fmtNumber(day.targets.calories)})
+        </button>
+      ) : null}
+      {e.confidence === "low" ? (
+        <div className="tiny muted" style={{ marginTop: 6 }}>
+          Оцінка груба — зважуйся щоранку, і за 2 тижні вона стане точною.
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -443,7 +517,7 @@ function HealthCard({ day }: { day: DayData }) {
   };
 
   return (
-    <Section title="Apple Watch">
+    <Section title="Здоров'я · годинник">
       <div className="card">
         {h ? (
           <div className="metric-grid">
@@ -471,6 +545,9 @@ function HealthCard({ day }: { day: DayData }) {
 
 function TargetsCard({ day, busy, run }: CardProps) {
   const [open, setOpen] = useState(false);
+  const [goal, setGoal] = useState<Goal>(day.profile.goal);
+  const [height, setHeight] = useState(day.profile.heightCm ?? 180);
+  const [weighIn, setWeighIn] = useState(day.profile.weighInReminder);
   const [calories, setCalories] = useState(day.targets.calories);
   const [protein, setProtein] = useState(day.targets.protein);
   const [water, setWater] = useState(day.targets.waterMl);
@@ -478,30 +555,49 @@ function TargetsCard({ day, busy, run }: CardProps) {
   if (!open) {
     return (
       <button className="link" style={{ marginTop: 20 }} onClick={() => setOpen(true)}>
-        Змінити цілі (ккал, білок, вода)
+        Профіль і цілі · {GOAL_LABELS[day.profile.goal].toLowerCase()}
       </button>
     );
   }
 
   return (
-    <Section title="Цілі на день">
+    <Section title="Профіль і цілі">
       <div className="card field-grid" style={{ gridTemplateColumns: "1fr" }}>
+        <label>
+          <span className="muted tiny">Мета</span>
+          <div className="segmented">
+            {(Object.keys(GOAL_LABELS) as Goal[]).map((g) => (
+              <button key={g} className={g === goal ? "active" : ""} onClick={() => setGoal(g)}>
+                {GOAL_LABELS[g]}
+              </button>
+            ))}
+          </div>
+        </label>
+        <label>
+          <span className="muted tiny">Зріст</span>
+          <Stepper value={height} step={1} min={120} max={230} unit="см" onChange={setHeight} />
+        </label>
         <label>
           <span className="muted tiny">Калорії</span>
           <Stepper value={calories} step={50} min={800} max={6000} unit="ккал" onChange={setCalories} />
         </label>
         <label>
-          <span className="muted tiny">Білок</span>
+          <span className="muted tiny">Білок {protein && day.energy.missing !== true ? `· ${fmtWeight(Math.round((protein / day.energy.latestWeightKg) * 10) / 10)} г/кг` : ""}</span>
           <Stepper value={protein} step={5} min={20} max={400} unit="г" onChange={setProtein} />
         </label>
         <label>
           <span className="muted tiny">Вода</span>
           <Stepper value={water} step={250} min={500} max={8000} unit="мл" onChange={setWater} />
         </label>
+        <button className="entry" style={{ borderTop: "none" }} onClick={() => setWeighIn((v) => !v)}>
+          <span className="grow">Нагадувати зважитись о {day.profile.weighInHour}:00</span>
+          <span style={{ color: weighIn ? "var(--success)" : "var(--muted)" }}>{weighIn ? "Увімкнено" : "Вимкнено"}</span>
+        </button>
         <button
           className="btn primary"
           disabled={busy}
           onClick={async () => {
+            await run(() => api.updateProfile(day.date, { heightCm: Math.round(height), goal, weighInReminder: weighIn }), false);
             await run(() =>
               api.updateTargets(day.date, {
                 calories: Math.round(calories),
@@ -512,7 +608,7 @@ function TargetsCard({ day, busy, run }: CardProps) {
             setOpen(false);
           }}
         >
-          Зберегти цілі
+          Зберегти
         </button>
       </div>
     </Section>

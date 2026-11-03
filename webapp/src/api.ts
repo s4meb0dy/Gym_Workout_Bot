@@ -129,6 +129,32 @@ export interface FoodEntry extends Macros {
   label: string;
 }
 
+export type Goal = "lean_bulk" | "maintain" | "cut";
+
+export type Energy =
+  | {
+      missing: true;
+      goal: Goal;
+      weighIns: number;
+      loggedDays: number;
+      hint: string;
+    }
+  | {
+      missing?: undefined;
+      tdee: number;
+      avgIntake: number;
+      weeklyChangeKg: number;
+      latestWeightKg: number;
+      periodDays: number;
+      loggedDays: number;
+      weighIns: number;
+      confidence: "high" | "medium" | "low";
+      goal: Goal;
+      targetWeeklyChangeKg: number;
+      recommendedCalories: number;
+      pace: "below" | "on_track" | "above";
+    };
+
 export interface DayData {
   date: string;
   isToday: boolean;
@@ -139,6 +165,8 @@ export interface DayData {
   waterMl: number;
   recentFoods: Array<Macros & { label: string }>;
   weight: { points: Array<{ id: string; date: string; weightKg: number }> };
+  energy: Energy;
+  profile: { heightCm: number | null; goal: Goal; weighInReminder: boolean; weighInHour: number };
   health: {
     sleepMinutes: number | null;
     restingHr: number | null;
@@ -204,6 +232,8 @@ export const api = {
   deleteWeight: (id: string, date: string) => request<{ day: DayData }>("DELETE", `/weight/${id}?date=${date}`),
   updateTargets: (date: string, targets: { calories: number; protein: number; waterMl: number }) =>
     request<{ day: DayData }>("PATCH", "/targets", { ...targets, date }),
+  updateProfile: (date: string, profile: { heightCm: number | null; goal: Goal; weighInReminder: boolean }) =>
+    request<{ day: DayData }>("PATCH", "/profile", { ...profile, date }),
   advice: (date: string) => request<{ advice: string | null }>("POST", "/health/advice", { date }),
   exerciseProgress: (id: number) =>
     request<{ name: string; points: OneRmPoint[] }>("GET", `/progress/exercises/${id}`),

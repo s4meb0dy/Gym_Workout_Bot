@@ -2,6 +2,7 @@ import { prisma } from "../db/client";
 import { getWeeklyVolume } from "./analytics.service";
 import { getProteinHistory, getProteinTarget, formatDisplayDate } from "./tracking.service";
 import { formatWeight } from "./progression";
+import { describeEnergy, estimateEnergy } from "./energy.service";
 
 export async function buildWeeklyDigest(userId: string): Promise<string> {
   const since = new Date();
@@ -54,6 +55,8 @@ export async function buildWeeklyDigest(userId: string): Promise<string> {
     );
     text += `🔥 Калорії: середнє ${avgCalories} ккал/день (${calorieDays.length} дн. з даними)\n`;
   }
+
+  text += `\n⚡ ${describeEnergy(await estimateEnergy(userId))}\n`;
 
   if (volume.length > 0) {
     text += "\n<b>Обсяг по м'язах:</b>\n";

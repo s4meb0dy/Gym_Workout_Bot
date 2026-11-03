@@ -140,6 +140,8 @@ export function reminderSettingsKeyboard(setting: {
   digestEnabled: boolean;
   supplementsEnabled: boolean;
   waterEnabled: boolean;
+  weightEnabled: boolean;
+  weightHour: number;
   workoutHour: number;
   proteinHour: number;
   supplementsHour: number;
@@ -163,6 +165,8 @@ export function reminderSettingsKeyboard(setting: {
       `${setting.supplementsEnabled ? "✅" : "⬜"} Добавки: омега-3, магній, D-3 (${setting.supplementsHour}:00)`,
       "rem_toggle_supplements",
     )
+    .row()
+    .text(`${setting.weightEnabled ? "✅" : "⬜"} Зважування натще (${setting.weightHour}:00)`, "rem_toggle_weight")
     .row()
     .text(`${setting.waterEnabled ? "✅" : "⬜"} Вода кожні 2 год (9:00–00:00)`, "rem_toggle_water")
     .row()

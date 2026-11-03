@@ -1,7 +1,10 @@
 import { randomBytes } from "crypto";
+import { EnergyEstimate, EnergyMissing, estimateEnergy, Goal, parseGoal } from "./energy.service";
 import { prisma } from "../db/client";
 import {
+  getCalorieTarget,
   getLatestBodyWeight,
+  getMacrosForDate,
   getProteinForDate,
   getProteinTarget,
   getWaterForDate,
@@ -75,6 +78,11 @@ export interface HealthContext {
   waterTargetMl: number;
   lastWorkout?: { dayName: string; date: string; sets: number };
   workoutsThisWeek: number;
+  heightCm?: number;
+  goal: Goal;
+  calorieTarget: number;
+  caloriesYesterday?: number;
+  energy: EnergyEstimate | EnergyMissing;
 }
 
 function parseSleepToMinutes(token: string): number | null {
@@ -298,6 +306,12 @@ export async function buildHealthContext(userId: string, date: string): Promise<
     ]);
 
   const workingSets = lastSession?.sets.filter((s) => s.weight > 0 && s.reps > 0).length ?? 0;
+  const [user, calorieTarget, macrosYesterday, energy] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId } }),
+    getCalorieTarget(userId),
+    getMacrosForDate(userId, yesterday),
+    estimateEnergy(userId),
+  ]);
 
   return {
     date,
@@ -323,6 +337,11 @@ export async function buildHealthContext(userId: string, date: string): Promise<
         }
       : undefined,
     workoutsThisWeek: weekCount,
+    heightCm: user?.heightCm ?? undefined,
+    goal: parseGoal(user?.goal),
+    calorieTarget,
+    caloriesYesterday: macrosYesterday.calories > 0 ? macrosYesterday.calories : undefined,
+    energy,
   };
 }
 

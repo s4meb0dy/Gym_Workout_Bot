@@ -239,7 +239,8 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
       | "backupEnabled"
       | "digestEnabled"
       | "supplementsEnabled"
-      | "waterEnabled",
+      | "waterEnabled"
+      | "weightEnabled",
   ) => {
     if (!ctx.from || !ctx.chat) return;
     const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
@@ -260,6 +261,7 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
   bot.callbackQuery("rem_toggle_backup", (ctx) => reminderToggle(ctx, "backupEnabled"));
   bot.callbackQuery("rem_toggle_digest", (ctx) => reminderToggle(ctx, "digestEnabled"));
   bot.callbackQuery("rem_toggle_supplements", (ctx) => reminderToggle(ctx, "supplementsEnabled"));
+  bot.callbackQuery("rem_toggle_weight", (ctx) => reminderToggle(ctx, "weightEnabled"));
   bot.callbackQuery("rem_toggle_water", (ctx) => reminderToggle(ctx, "waterEnabled"));
 
   const adjustProteinTarget = async (ctx: BotContext, delta: number) => {

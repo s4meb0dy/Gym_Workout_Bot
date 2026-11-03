@@ -37,6 +37,7 @@ import {
   updateSet,
 } from "../services/workout.service";
 import { buildAdvice, buildDayView, isValidDay } from "../services/webapp-day.service";
+import { parseGoal } from "../services/energy.service";
 import {
   addNutritionEntry,
   addWater,
@@ -511,6 +512,26 @@ export function registerWebAppRoutes(app: express.Application): void {
         proteinTarget: protein,
         waterTargetMl: waterMl,
       });
+      await sendDay(res, user, dayOf(b.date));
+    }),
+  );
+
+  api.patch(
+    "/profile",
+    route(async (req, res, user) => {
+      const b = (req.body ?? {}) as Record<string, unknown>;
+      const heightCm = b.heightCm == null || b.heightCm === "" ? null : Number(b.heightCm);
+      if (heightCm != null && (!Number.isInteger(heightCm) || heightCm < 120 || heightCm > 230)) {
+        res.status(400).json({ error: "invalid_profile" });
+        return;
+      }
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { heightCm, goal: parseGoal(b.goal) },
+      });
+      if (typeof b.weighInReminder === "boolean") {
+        await upsertReminderSetting(user.id, Number(user.telegramId), { weightEnabled: b.weighInReminder });
+      }
       await sendDay(res, user, dayOf(b.date));
     }),
   );
