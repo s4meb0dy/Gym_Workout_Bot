@@ -5,7 +5,6 @@ import { config, isAllowedUser } from "../config/env";
 import {
   getActiveReminderSettings,
   getProteinForDate,
-  getWaterForDate,
 } from "../services/tracking.service";
 import { getWorkoutDayByNumber } from "../services/workout.service";
 import { createBackupFile, backupExists } from "../services/backup.service";
@@ -25,12 +24,6 @@ const WEEKDAY_TO_DAY_NUMBER: Record<string, number> = {
 const BACKUP_HOUR = 3;
 const DIGEST_WEEKDAY = "Sun";
 const DIGEST_HOUR = 19;
-// Every 2 hours from 09:00 through 00:00 (local timezone)
-const WATER_REMINDER_HOURS = [9, 11, 13, 15, 17, 19, 21, 23, 0];
-
-function formatMlShort(ml: number): string {
-  return ml >= 1000 ? `${(ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1)} л` : `${ml} мл`;
-}
 
 function getLocalHour(): number {
   const parts = new Intl.DateTimeFormat("en-US", {
@@ -104,24 +97,6 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
               `Залишилось ще <b>${Math.round(left)} г</b> — встигни добрати!`
             : `🍗 Чудово! Ціль ${setting.proteinTarget} г білка вже досягнута (${Math.round(total)} г). 💪`;
         await bot.api.sendMessage(chatId, message, { parse_mode: "HTML" });
-      }
-
-      if (setting.waterEnabled && WATER_REMINDER_HOURS.includes(hour)) {
-        const drunk = await getWaterForDate(setting.userId);
-        const left = setting.waterTargetMl - drunk;
-        if (left > 0) {
-          await bot.api.sendMessage(
-            chatId,
-            `💧 Вода: <b>${formatMlShort(drunk)}/${formatMlShort(setting.waterTargetMl)}</b>. ` +
-              `Залишилось <b>${formatMlShort(left)}</b> — зроби кілька ковтків! Додати: /water`,
-            { parse_mode: "HTML" },
-          );
-        } else if (hour === WATER_REMINDER_HOURS[0]) {
-          await bot.api.sendMessage(
-            chatId,
-            `💧 Ціль по воді вже виконана (${formatMlShort(drunk)}). Чудово! 👏`,
-          );
-        }
       }
 
       if (setting.backupEnabled && hour === BACKUP_HOUR && backupExists()) {

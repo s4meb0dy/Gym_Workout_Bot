@@ -14,7 +14,6 @@ export const MAIN_MENU_BUTTONS = [
   "📋 Моя програма (4 дні)",
   "📊 Статистика та рекорди",
   "🍗 Білок",
-  "💧 Вода",
 ] as const;
 
 /** Основне тепер у застосунку — у боті лишаються швидкі дії та нагадування. */
@@ -145,7 +144,6 @@ export function reminderSettingsKeyboard(setting: {
   backupEnabled: boolean;
   digestEnabled: boolean;
   supplementsEnabled: boolean;
-  waterEnabled: boolean;
   weightEnabled: boolean;
   weightHour: number;
   workoutHour: number;
@@ -153,9 +151,7 @@ export function reminderSettingsKeyboard(setting: {
   supplementsHour: number;
   proteinTarget: number;
   calorieTarget: number;
-  waterTargetMl: number;
 }) {
-  const waterLiters = (setting.waterTargetMl / 1000).toFixed(setting.waterTargetMl % 1000 === 0 ? 0 : 1);
   return new InlineKeyboard()
     .text(
       `${setting.workoutEnabled ? "✅" : "⬜"} Нагадування про тренування (${setting.workoutHour}:00)`,
@@ -174,8 +170,6 @@ export function reminderSettingsKeyboard(setting: {
     .row()
     .text(`${setting.weightEnabled ? "✅" : "⬜"} Зважування натще (${setting.weightHour}:00)`, "rem_toggle_weight")
     .row()
-    .text(`${setting.waterEnabled ? "✅" : "⬜"} Вода кожні 2 год (9:00–00:00)`, "rem_toggle_water")
-    .row()
     .text(`${setting.digestEnabled ? "✅" : "⬜"} Тижневий підсумок (Нд 19:00)`, "rem_toggle_digest")
     .row()
     .text(`${setting.backupEnabled ? "✅" : "⬜"} Щоденний бекап БД`, "rem_toggle_backup")
@@ -186,11 +180,7 @@ export function reminderSettingsKeyboard(setting: {
     .row()
     .text("🔥 Ціль калорій: −50", "rem_calorie_minus")
     .text(`${setting.calorieTarget} ккал`, "rem_noop")
-    .text("+50", "rem_calorie_plus")
-    .row()
-    .text("💧 Ціль води: −250", "rem_water_minus")
-    .text(`${waterLiters} л`, "rem_noop")
-    .text("+250", "rem_water_plus");
+    .text("+50", "rem_calorie_plus");
 }
 
 export function finishOnlyKeyboard() {

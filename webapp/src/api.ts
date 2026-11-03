@@ -175,12 +175,11 @@ export type MeasurementField = "waistCm" | "chestCm" | "shouldersCm" | "armCm" |
 export interface DayData {
   date: string;
   isToday: boolean;
-  targets: { calories: number; protein: number; fat: number; carbs: number; waterMl: number };
+  targets: { calories: number; protein: number; fat: number; carbs: number };
   recommendedSplit: { calories: number; protein: number; fat: number; carbs: number } | null;
   macros: Macros;
   entries: FoodEntry[];
   previousEntries: FoodEntry[];
-  waterMl: number;
   recentFoods: Array<Macros & { label: string }>;
   weight: { points: Array<{ id: string; date: string; weightKg: number }> };
   energy: Energy;
@@ -254,13 +253,11 @@ export const api = {
   updateFood: (id: string, food: Macros & { label: string }) =>
     request<{ day: DayData }>("PATCH", `/nutrition/${id}`, food),
   deleteFood: (id: string) => request<{ day: DayData }>("DELETE", `/nutrition/${id}`),
-  addWater: (date: string, ml: number) => request<{ day: DayData }>("POST", "/water", { date, ml }),
-  undoWater: (date: string) => request<{ day: DayData }>("POST", "/water/undo", { date }),
   logWeight: (date: string, weightKg: number) => request<{ day: DayData }>("POST", "/weight", { date, weightKg }),
   deleteWeight: (id: string, date: string) => request<{ day: DayData }>("DELETE", `/weight/${id}?date=${date}`),
   updateTargets: (
     date: string,
-    targets: { calories: number; protein: number; waterMl: number; fat?: number; carbs?: number },
+    targets: { calories: number; protein: number; fat?: number; carbs?: number },
   ) =>
     request<{ day: DayData }>("PATCH", "/targets", { ...targets, date }),
   addMeasurement: (date: string, values: Partial<Record<MeasurementField, number>>) =>

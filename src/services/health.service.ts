@@ -7,8 +7,6 @@ import {
   getMacrosForDate,
   getProteinForDate,
   getProteinTarget,
-  getWaterForDate,
-  getWaterTarget,
   localDateString,
 } from "./tracking.service";
 
@@ -74,8 +72,6 @@ export interface HealthContext {
   latestWeightKg?: number;
   proteinYesterday?: number;
   proteinTarget: number;
-  waterYesterdayMl?: number;
-  waterTargetMl: number;
   lastWorkout?: { dayName: string; date: string; sets: number };
   workoutsThisWeek: number;
   heightCm?: number;
@@ -285,13 +281,11 @@ export async function buildHealthContext(userId: string, date: string): Promise<
   const yesterday = shiftDateString(date, -1);
   const weekAgo = shiftDateString(date, -7);
 
-  const [weight, proteinYesterday, proteinTarget, waterYesterday, waterTarget, lastSession, weekCount] =
+  const [weight, proteinYesterday, proteinTarget, lastSession, weekCount] =
     await Promise.all([
       getLatestBodyWeight(userId),
       getProteinForDate(userId, yesterday),
       getProteinTarget(userId),
-      getWaterForDate(userId, yesterday),
-      getWaterTarget(userId),
       prisma.workoutSession.findFirst({
         where: { userId, completedAt: { not: null } },
         orderBy: { completedAt: "desc" },
@@ -327,8 +321,6 @@ export async function buildHealthContext(userId: string, date: string): Promise<
     latestWeightKg: weight?.weightKg,
     proteinYesterday: Math.round(proteinYesterday),
     proteinTarget,
-    waterYesterdayMl: waterYesterday,
-    waterTargetMl: waterTarget,
     lastWorkout: lastSession
       ? {
           dayName: lastSession.workoutDay.name,

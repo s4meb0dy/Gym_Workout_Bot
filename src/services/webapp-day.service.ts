@@ -8,8 +8,6 @@ import {
   getMacrosForDate,
   getNutritionEntries,
   getProteinTarget,
-  getWaterForDate,
-  getWaterTarget,
   localDateString,
   shiftDateString,
 } from "./tracking.service";
@@ -55,14 +53,12 @@ async function getWeightView(userId: string) {
 }
 
 export async function buildDayView(userId: string, date: string) {
-  const [macros, calorieTarget, proteinTarget, waterTarget, entries, water, recentFoods, weight, health, previous] =
+  const [macros, calorieTarget, proteinTarget, entries, recentFoods, weight, health, previous] =
     await Promise.all([
       getMacrosForDate(userId, date),
       getCalorieTarget(userId),
       getProteinTarget(userId),
-      getWaterTarget(userId),
       getNutritionEntries(userId, date),
-      getWaterForDate(userId, date),
       getRecentFoods(userId),
       getWeightView(userId),
       getHealthLog(userId, date),
@@ -92,7 +88,6 @@ export async function buildDayView(userId: string, date: string) {
       protein: proteinTarget,
       fat: reminder?.fatTarget ?? 70,
       carbs: reminder?.carbsTarget ?? 300,
-      waterMl: waterTarget,
     },
     // Рекомендований розподіл БЖВ під поточну ціль калорій і останню вагу.
     recommendedSplit: weight.points.length
@@ -101,7 +96,6 @@ export async function buildDayView(userId: string, date: string) {
     macros,
     entries: entries.map(toView),
     previousEntries: previous.map(toView),
-    waterMl: water,
     recentFoods,
     weight,
     energy,

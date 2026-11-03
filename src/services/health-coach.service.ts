@@ -109,7 +109,6 @@ function buildCoachPrompt(ctx: HealthContext): string {
     `- Калорії вчора: ${ctx.caloriesYesterday ?? "немає"}/${ctx.calorieTarget} ккал\n` +
     `- Енергобаланс за даними ваги і харчування: ${describeEnergy(ctx.energy)}\n` +
     `- Білок вчора: ${ctx.proteinYesterday ?? "немає"}/${ctx.proteinTarget} г\n` +
-    `- Вода вчора: ${ctx.waterYesterdayMl ?? "немає"}/${ctx.waterTargetMl} мл\n` +
     `- Тренувань за тиждень: ${ctx.workoutsThisWeek}\n` +
     (ctx.lastWorkout
       ? `- Останнє тренування: ${ctx.lastWorkout.dayName} (${ctx.lastWorkout.date}), ${ctx.lastWorkout.sets} підходів\n`

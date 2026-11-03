@@ -41,7 +41,6 @@ import { parseGoal } from "../services/energy.service";
 import { parseMeasurement } from "../services/measurements.service";
 import {
   addNutritionEntry,
-  addWater,
   copyNutritionEntries,
   deleteBodyWeight,
   deleteNutritionEntry,
@@ -50,7 +49,6 @@ import {
   localDateString,
   logBodyWeight,
   MacroEntry,
-  undoLastWater,
   updateNutritionEntry,
   upsertReminderSetting,
 } from "../services/tracking.service";
@@ -386,7 +384,7 @@ export function registerWebAppRoutes(app: express.Application): void {
     }),
   );
 
-  // ---- Day: nutrition, water, body weight, health ----
+  // ---- Day: nutrition, body weight, health ----
 
   const dayOf = (value: unknown) => (isValidDay(value) ? value : localDateString());
   const sendDay = async (res: express.Response, user: User, date: string) => {
@@ -456,29 +454,6 @@ export function registerWebAppRoutes(app: express.Application): void {
   );
 
   api.post(
-    "/water",
-    route(async (req, res, user) => {
-      const ml = Number(req.body?.ml);
-      if (!Number.isFinite(ml) || ml < 10 || ml > 3000) {
-        res.status(400).json({ error: "invalid_water" });
-        return;
-      }
-      const date = dayOf(req.body?.date);
-      await addWater(user.id, ml, date);
-      await sendDay(res, user, date);
-    }),
-  );
-
-  api.post(
-    "/water/undo",
-    route(async (req, res, user) => {
-      const date = dayOf(req.body?.date);
-      await undoLastWater(user.id, date);
-      await sendDay(res, user, date);
-    }),
-  );
-
-  api.post(
     "/weight",
     route(async (req, res, user) => {
       const kg = Number(req.body?.weightKg);
@@ -510,7 +485,6 @@ export function registerWebAppRoutes(app: express.Application): void {
       const b = (req.body ?? {}) as Record<string, unknown>;
       const calories = Number(b.calories);
       const protein = Number(b.protein);
-      const waterMl = Number(b.waterMl);
       const fat = b.fat === undefined ? undefined : Number(b.fat);
       const carbs = b.carbs === undefined ? undefined : Number(b.carbs);
       if (
@@ -522,8 +496,7 @@ export function registerWebAppRoutes(app: express.Application): void {
       }
       if (
         !Number.isInteger(calories) || calories < 800 || calories > 6000 ||
-        !Number.isInteger(protein) || protein < 20 || protein > 400 ||
-        !Number.isInteger(waterMl) || waterMl < 500 || waterMl > 8000
+        !Number.isInteger(protein) || protein < 20 || protein > 400
       ) {
         res.status(400).json({ error: "invalid_targets" });
         return;
@@ -531,7 +504,6 @@ export function registerWebAppRoutes(app: express.Application): void {
       await upsertReminderSetting(user.id, Number(user.telegramId), {
         calorieTarget: calories,
         proteinTarget: protein,
-        waterTargetMl: waterMl,
         ...(fat !== undefined ? { fatTarget: fat } : {}),
         ...(carbs !== undefined ? { carbsTarget: carbs } : {}),
       });

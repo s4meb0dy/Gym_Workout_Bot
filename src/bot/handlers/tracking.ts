@@ -239,7 +239,6 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
       | "backupEnabled"
       | "digestEnabled"
       | "supplementsEnabled"
-      | "waterEnabled"
       | "weightEnabled",
   ) => {
     if (!ctx.from || !ctx.chat) return;
@@ -262,7 +261,6 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
   bot.callbackQuery("rem_toggle_digest", (ctx) => reminderToggle(ctx, "digestEnabled"));
   bot.callbackQuery("rem_toggle_supplements", (ctx) => reminderToggle(ctx, "supplementsEnabled"));
   bot.callbackQuery("rem_toggle_weight", (ctx) => reminderToggle(ctx, "weightEnabled"));
-  bot.callbackQuery("rem_toggle_water", (ctx) => reminderToggle(ctx, "waterEnabled"));
 
   const adjustProteinTarget = async (ctx: BotContext, delta: number) => {
     if (!ctx.from || !ctx.chat) return;
@@ -297,23 +295,6 @@ export function registerTrackingHandlers(bot: Bot<BotContext>) {
 
   bot.callbackQuery("rem_calorie_minus", (ctx) => adjustCalorieTarget(ctx, -50));
   bot.callbackQuery("rem_calorie_plus", (ctx) => adjustCalorieTarget(ctx, 50));
-
-  const adjustWaterTarget = async (ctx: BotContext, delta: number) => {
-    if (!ctx.from || !ctx.chat) return;
-    const user = await findOrCreateUser(ctx.from.id, ctx.from.username, ctx.from.first_name);
-    const current = await getReminderSetting(user.id);
-    const target = Math.max(1000, Math.min(6000, (current?.waterTargetMl ?? 3000) + delta));
-    const updated = await upsertReminderSetting(user.id, ctx.chat.id, { waterTargetMl: target });
-    await ctx.answerCallbackQuery({ text: `Ціль води: ${(target / 1000).toFixed(target % 1000 === 0 ? 0 : 1)} л` });
-    try {
-      await ctx.editMessageReplyMarkup({ reply_markup: reminderSettingsKeyboard(updated) });
-    } catch {
-      // ignore
-    }
-  };
-
-  bot.callbackQuery("rem_water_minus", (ctx) => adjustWaterTarget(ctx, -250));
-  bot.callbackQuery("rem_water_plus", (ctx) => adjustWaterTarget(ctx, 250));
 
   bot.command("proteinhistory", async (ctx) => {
     if (!ctx.from) return;

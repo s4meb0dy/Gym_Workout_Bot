@@ -8,7 +8,6 @@ import { registerStatsHandlers } from "./handlers/stats";
 import { registerWorkoutHandlers } from "./handlers/workout";
 import { registerTrackingHandlers } from "./handlers/tracking";
 import { registerFoodHandlers } from "./handlers/food";
-import { registerWaterHandlers } from "./handlers/water";
 import { registerAnalyticsHandlers } from "./handlers/analytics";
 import { registerToolsHandlers } from "./handlers/tools";
 import { registerHistoryHandlers } from "./handlers/history";
@@ -26,7 +25,6 @@ export interface SessionData {
     | "weight"
     | "protein"
     | "food_macros"
-    | "water"
     | "weight_edit"
     | "food_edit"
     | null;
@@ -115,7 +113,6 @@ export function createBot(): Bot<BotContext> {
   registerMenuHandlers(bot);
   registerTrackingHandlers(bot);
   registerFoodHandlers(bot);
-  registerWaterHandlers(bot);
   registerHealthHandlers(bot);
   registerAnalyticsHandlers(bot);
   registerToolsHandlers(bot);
@@ -165,7 +162,6 @@ export async function startBot(bot: Bot<BotContext>): Promise<void> {
     { command: "stats", description: "Статистика" },
     { command: "weight", description: "Записати вагу тіла" },
     { command: "protein", description: "Додати білок за сьогодні" },
-    { command: "water", description: "Трекінг води" },
     { command: "food", description: "КБЖВ / підсумок дня" },
     { command: "watch", description: "Apple Watch / поради здоров'я" },
     { command: "volume", description: "Обсяг по м'язах за тиждень" },

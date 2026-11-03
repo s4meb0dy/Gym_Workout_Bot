@@ -19,10 +19,6 @@ function dayTitle(day: DayData): string {
   return fmtDate(`${day.date}T12:00:00`, { weekday: "short", day: "numeric", month: "long" });
 }
 
-function fmtLiters(ml: number): string {
-  return ml >= 1000 ? `${(ml / 1000).toFixed(ml % 1000 === 0 ? 0 : 1)} л` : `${ml} мл`;
-}
-
 function Bar({ value, target, over }: { value: number; target: number; over?: boolean }) {
   const ratio = target > 0 ? value / target : 0;
   const color = over && ratio > 1.05 ? "var(--warn)" : ratio >= 1 ? "var(--success)" : "var(--accent)";
@@ -80,7 +76,6 @@ export function DayScreen() {
       {actionError ? <div className="error">{actionError}</div> : null}
 
       <NutritionCard day={day} busy={busy} run={run} />
-      <WaterCard day={day} busy={busy} run={run} />
       <WeightCard day={day} busy={busy} run={run} />
       <MeasurementsCard day={day} busy={busy} run={run} />
       <HealthCard day={day} />
@@ -324,37 +319,6 @@ function FoodForm({ value, busy, onChange, onSave, onDelete, onCancel }: FoodFor
         Скасувати
       </button>
     </div>
-  );
-}
-
-function WaterCard({ day, busy, run }: CardProps) {
-  return (
-    <Section title="Вода">
-      <div className="card">
-        <div className="row spread" style={{ alignItems: "baseline" }}>
-          <div>
-            <span className="big-num">{fmtLiters(day.waterMl)}</span>
-            <span className="muted"> / {fmtLiters(day.targets.waterMl)}</span>
-          </div>
-          <button
-            className="link"
-            style={{ marginTop: 0 }}
-            disabled={busy || day.waterMl === 0}
-            onClick={() => void run(() => api.undoWater(day.date), false)}
-          >
-            ↩ Скасувати
-          </button>
-        </div>
-        <Bar value={day.waterMl} target={day.targets.waterMl} />
-        <div className="btn-row" style={{ marginTop: 4 }}>
-          {[250, 500, 750].map((ml) => (
-            <button key={ml} className="btn secondary" disabled={busy} onClick={() => void run(() => api.addWater(day.date, ml))}>
-              +{ml}
-            </button>
-          ))}
-        </div>
-      </div>
-    </Section>
   );
 }
 
@@ -622,7 +586,6 @@ function EnergyBlock({ day, busy, run }: CardProps) {
               api.updateTargets(day.date, {
                 calories: e.recommendedCalories,
                 protein: day.targets.protein,
-                waterMl: day.targets.waterMl,
               }),
             )
           }
@@ -711,7 +674,6 @@ function TargetsCard({ day, busy, run }: CardProps) {
   const [protein, setProtein] = useState(day.targets.protein);
   const [fat, setFat] = useState(day.targets.fat);
   const [carbs, setCarbs] = useState(day.targets.carbs);
-  const [water, setWater] = useState(day.targets.waterMl);
 
   const latestWeight = day.weight.points[day.weight.points.length - 1]?.weightKg ?? null;
   const macroKcal = Math.round(protein * 4 + fat * 9 + carbs * 4);
@@ -779,10 +741,6 @@ function TargetsCard({ day, busy, run }: CardProps) {
           БЖВ разом: {fmtNumber(macroKcal)} ккал
           {Math.abs(macroKcal - calories) > 100 ? ` — не збігається з ціллю ${fmtNumber(calories)} ккал` : ""}
         </div>
-        <label>
-          <span className="muted tiny">Вода</span>
-          <Stepper value={water} step={250} min={500} max={8000} unit="мл" onChange={setWater} />
-        </label>
         <button className="entry" style={{ borderTop: "none" }} onClick={() => setWeighIn((v) => !v)}>
           <span className="grow">Нагадувати зважитись о {day.profile.weighInHour}:00</span>
           <span style={{ color: weighIn ? "var(--success)" : "var(--muted)" }}>{weighIn ? "Увімкнено" : "Вимкнено"}</span>
@@ -798,7 +756,6 @@ function TargetsCard({ day, busy, run }: CardProps) {
                 protein: Math.round(protein),
                 fat: Math.round(fat),
                 carbs: Math.round(carbs),
-                waterMl: Math.round(water),
               }),
             );
             setOpen(false);
