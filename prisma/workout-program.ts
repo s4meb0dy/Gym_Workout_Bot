@@ -31,7 +31,7 @@ export const REST_MACHINE = 90;
 /** Мала ізоляція, плечі та руки */
 export const REST_ISOLATION = 60;
 
-export const PROGRAM_VERSION = 11;
+export const PROGRAM_VERSION = 12;
 
 /**
  * Блок без ваги: один "підхід"-чекліст. Ваги немає, таймера відпочинку немає,
@@ -156,19 +156,20 @@ export const workoutProgram: WorkoutDaySeed[] = [
     exercises: [
       WARMUP_UPPER_CHEST,
       {
-        name: "Жим гантелей на похилій лаві (верх грудей)",
-        block: "Гантелі",
+        name: "Жим на похилій лаві в сміті (верх грудей)",
+        block: "Тренажери",
         targetSets: 4,
         targetRepsMin: 6,
         targetRepsMax: 10,
         bodyPart: "upper",
-        progressionStep: 2,
+        progressionStep: 2.5,
         restTimeInSeconds: REST_PRIORITY,
-        baselineWeightMin: 20,
-        baselineWeightMax: 20,
-        baselineNote: "2×20 кг",
+        baselineWeightMin: 46,
+        baselineWeightMax: 46,
+        baselineNote: "46 кг на грифі",
         technique:
-          "Лава 30°. ПЕРШИЙ рух дня — груди отримують максимально свіже навантаження. Опускай до легкого розтягу, без відбиву.",
+          "Лава 30° у сміті — важкі гантелі вже не закинути. ПЕРШИЙ рух дня. Опускай до легкого розтягу, без відбиву. " +
+          "Завжди виставляй страхувальні упори трохи нижче грудей.",
       },
       {
         name: "Тяга гантелі до пояса в нахилі (однією рукою з упором)",
@@ -229,7 +230,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
       {
         name: "Канатні розгинання на трицепс у кросовері",
         block: "Тренажери",
-        targetSets: 2,
+        targetSets: 3,
         targetRepsMin: 12,
         targetRepsMax: 15,
         bodyPart: "upper",
@@ -238,7 +239,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 23,
         baselineWeightMax: 23,
         baselineNote: "23 кг",
-        technique: "Підтримуючий об'єм: 2 підходи. Руки вже розвинені, енергія йде на груди/спину.",
+        technique: "3 підходи: трицепс — половина об'єму руки, а жими після травми ребра ще не добирають навантаження.",
       },
       POSTURE_BLOCK,
     ],
@@ -388,9 +389,25 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineNote: "2×8 кг",
       },
       {
+        name: "Махи в сторони на блоці (кросовер)",
+        block: "Тренажери",
+        targetSets: 3,
+        targetRepsMin: 12,
+        targetRepsMax: 15,
+        bodyPart: "upper",
+        progressionStep: 2,
+        restTimeInSeconds: REST_ISOLATION,
+        baselineWeightMin: 5,
+        baselineWeightMax: 5,
+        baselineNote: "5 кг на блоці",
+        technique:
+          "Друга сесія середньої дельти на тиждень — ширина плечей. Блок дає навантаження і внизу амплітуди, " +
+          "на відміну від гантелей. Однією рукою, корпус трохи від блоку.",
+      },
+      {
         name: "Молоткові підйоми (Hammer Curls)",
         block: "Гантелі",
-        targetSets: 2,
+        targetSets: 3,
         targetRepsMin: 10,
         targetRepsMax: 12,
         bodyPart: "upper",
@@ -399,7 +416,21 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 14,
         baselineWeightMax: 14,
         baselineNote: "2×14 кг",
-        technique: "Підтримуючий об'єм: 2 підходи.",
+        technique: "3 підходи — біцепс і брахіораліс для товщини руки.",
+      },
+      {
+        name: "Розгинання з-за голови на блоці (трицепс)",
+        block: "Тренажери",
+        targetSets: 2,
+        targetRepsMin: 12,
+        targetRepsMax: 15,
+        bodyPart: "upper",
+        progressionStep: 2,
+        restTimeInSeconds: REST_ISOLATION,
+        baselineWeightMin: 15,
+        baselineWeightMax: 15,
+        baselineNote: "15 кг",
+        technique: "Довга голівка трицепса росте найкраще в розтягнутому положенні — над головою, лікті вперед.",
       },
       POSTURE_BLOCK,
     ],
