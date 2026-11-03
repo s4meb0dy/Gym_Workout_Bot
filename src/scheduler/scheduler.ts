@@ -25,6 +25,16 @@ const BACKUP_HOUR = 3;
 const DIGEST_WEEKDAY = "Sun";
 const DIGEST_HOUR = 19;
 
+/** Жиророзчинні (D3, омега) засвоюються з їжею, тому — з найжирнішим прийомом. */
+const DAY_SUPPLEMENTS =
+  "💊 <b>Добавки — з найжирнішим прийомом їжі</b>\n" +
+  "• Омега-3 (Olimp) — 2 капс.\n" +
+  "• D3 2000 IU — 2 капс.\n" +
+  "• Метилфолат 400 мкг — 1 табл.\n" +
+  "• Креатин — 5 г (якщо ще не випив)";
+
+const NIGHT_SUPPLEMENTS = "😴 <b>Перед сном</b>\n• Магній бісгліцинат — 2 капс.";
+
 function getLocalHour(): number {
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: config.timezone,
@@ -82,10 +92,11 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
       }
 
       if (setting.supplementsEnabled && hour === setting.supplementsHour) {
-        await bot.api.sendMessage(
-          chatId,
-          "💊 Час прийняти добавки:\n• Омега-3\n• Магній малат\n• Вітамін D-3",
-        );
+        await bot.api.sendMessage(chatId, DAY_SUPPLEMENTS, { parse_mode: "HTML" });
+      }
+
+      if (setting.supplementsEnabled && hour === setting.magnesiumHour) {
+        await bot.api.sendMessage(chatId, NIGHT_SUPPLEMENTS, { parse_mode: "HTML" });
       }
 
       if (setting.proteinEnabled && hour === setting.proteinHour) {

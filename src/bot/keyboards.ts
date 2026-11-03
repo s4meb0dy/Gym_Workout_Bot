@@ -149,6 +149,7 @@ export function reminderSettingsKeyboard(setting: {
   workoutHour: number;
   proteinHour: number;
   supplementsHour: number;
+  magnesiumHour: number;
   proteinTarget: number;
   calorieTarget: number;
 }) {
@@ -164,7 +165,7 @@ export function reminderSettingsKeyboard(setting: {
     )
     .row()
     .text(
-      `${setting.supplementsEnabled ? "✅" : "⬜"} Добавки: омега-3, магній, D-3 (${setting.supplementsHour}:00)`,
+      `${setting.supplementsEnabled ? "✅" : "⬜"} Добавки (${setting.supplementsHour}:00) і магній (${setting.magnesiumHour}:00)`,
       "rem_toggle_supplements",
     )
     .row()

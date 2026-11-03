@@ -240,6 +240,7 @@ export async function upsertReminderSetting(
     digestEnabled: boolean;
     supplementsEnabled: boolean;
     supplementsHour: number;
+    magnesiumHour: number;
     weightEnabled: boolean;
     weightHour: number;
   }> = {},

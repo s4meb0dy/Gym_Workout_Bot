@@ -112,6 +112,7 @@ model ReminderSetting {
   digestEnabled      Boolean @default(true)
   supplementsEnabled Boolean @default(true)
   supplementsHour    Int     @default(21)
+  magnesiumHour      Int     @default(23)
   waterEnabled       Boolean @default(true)
   waterTargetMl      Int     @default(3000)
   weightEnabled      Boolean @default(true)
