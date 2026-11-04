@@ -8,6 +8,7 @@ import {
   buildHealthContext,
   findUserByHealthToken,
   formatHealthSummary,
+  getHealthLog,
   sanitizeHealthMetrics,
   upsertHealthLog,
 } from "../services/health.service";
@@ -63,6 +64,17 @@ export function normalizeSleepMinutes(value: number | undefined): number | undef
   return value;
 }
 
+/** Сон, що збігається з попередньою ніччю до хвилини, — майже напевно повтор старого запису. */
+export function isStaleSleep(sleepMinutes: number | undefined, previousSleepMinutes: number | null | undefined): boolean {
+  return sleepMinutes != null && previousSleepMinutes != null && Math.round(sleepMinutes) === previousSleepMinutes;
+}
+
+function shiftDay(date: string, delta: number): string {
+  const d = new Date(`${date}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() + delta);
+  return d.toISOString().slice(0, 10);
+}
+
 export function parseSyncBody(body: Record<string, unknown>): {
   token: string;
   date: string;
@@ -116,6 +128,13 @@ export function registerHealthSyncRoutes(app: express.Application): void {
       if (!user) {
         res.status(401).json({ ok: false, error: "Invalid token" });
         return;
+      }
+
+      // Якщо нова ніч ще не синхронізувалась, шорткат підхоплює вчорашню — точно той самий сон.
+      const previous = await getHealthLog(user.id, shiftDay(parsed.date, -1));
+      if (isStaleSleep(parsed.metrics.sleepMinutes, previous?.sleepMinutes)) {
+        console.log(`Health sync: sleep ${parsed.metrics.sleepMinutes} min equals previous night — ignored as stale`);
+        parsed.metrics.sleepMinutes = undefined;
       }
 
       const log = await upsertHealthLog(user.id, parsed.date, parsed.metrics, "apple_watch");

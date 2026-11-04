@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
-import { normalizeSleepMinutes, parseSyncBody } from "../src/server/health-sync";
+import { isStaleSleep, normalizeSleepMinutes, parseSyncBody } from "../src/server/health-sync";
+
+describe("isStaleSleep", () => {
+  it("flags the exact same sleep as the previous night", () => {
+    expect(isStaleSleep(398, 398)).toBe(true);
+  });
+
+  it("keeps a different night and the first night", () => {
+    expect(isStaleSleep(520, 398)).toBe(false);
+    expect(isStaleSleep(398, null)).toBe(false);
+    expect(isStaleSleep(undefined, 398)).toBe(false);
+  });
+});
 import { sanitizeHealthMetrics } from "../src/services/health.service";
 
 describe("normalizeSleepMinutes", () => {
