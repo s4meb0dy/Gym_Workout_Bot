@@ -127,6 +127,18 @@ export function sleepFromStages(rawStages: unknown, rawDurations: unknown): numb
   return seconds > 0 ? normalizeSleepMinutes(seconds) : undefined;
 }
 
+/** Хвилини по кожній фазі — для журналу, щоб звіряти з екраном «Сон» у Здоров'ї. */
+export function stageTotals(rawStages: unknown, rawDurations: unknown): Record<string, number> {
+  const stages = flattenLines(rawStages) ?? [];
+  const durations = flattenLines(rawDurations) ?? [];
+  const totals: Record<string, number> = {};
+  stages.forEach((stage, i) => {
+    const key = String(stage);
+    totals[key] = Math.round(((totals[key] ?? 0) * 60 + (parseDurationSeconds(durations[i]) ?? 0)) / 6) / 10;
+  });
+  return totals;
+}
+
 /** Сон, що збігається з попередньою ніччю до хвилини, — майже напевно повтор старого запису. */
 export function isStaleSleep(sleepMinutes: number | undefined, previousSleepMinutes: number | null | undefined): boolean {
   return sleepMinutes != null && previousSleepMinutes != null && Math.round(sleepMinutes) === previousSleepMinutes;
@@ -186,8 +198,14 @@ export function registerHealthSyncRoutes(app: express.Application): void {
       }
 
       // Що надіслав шорткат і що з цього прийнято — без токена, для діагностики.
-      const { token: _token, ...raw } = (req.body ?? {}) as Record<string, unknown>;
-      console.log("Health sync:", JSON.stringify(raw).slice(0, 500), "→", JSON.stringify(parsed.metrics));
+      const { token: _token, sleepStages, sleepDurations, ...raw } = (req.body ?? {}) as Record<string, unknown>;
+      console.log(
+        "Health sync:",
+        JSON.stringify(raw).slice(0, 500),
+        sleepStages ? `stages ${JSON.stringify(stageTotals(sleepStages, sleepDurations))}` : "",
+        "→",
+        JSON.stringify(parsed.metrics),
+      );
 
       const user = await findUserByHealthToken(parsed.token);
       if (!user) {
