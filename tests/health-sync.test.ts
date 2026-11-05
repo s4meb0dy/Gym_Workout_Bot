@@ -12,6 +12,10 @@ describe("sleepFromStages", () => {
     expect(sleepFromStages(["Core", "REM"], ["1:11:00", "1 год 12 хв"])).toBe(143);
   });
 
+  it("reads Shortcuts mm:ss under an hour and h:mm:ss above", () => {
+    expect(sleepFromStages(["Глибокий\nПовільний\nУ ліжку"], ["18:00\n28:00\n9:00:00"])).toBe(46);
+  });
+
   it("splits a single newline-joined item from a Shortcuts list field", () => {
     expect(sleepFromStages(["У ліжку\nБез сну\nПовільний\nШвидкий"], ["32400\n1800\n21600\n4380"])).toBe(433);
   });

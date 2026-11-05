@@ -91,7 +91,8 @@ export function parseDurationSeconds(value: unknown): number | undefined {
   const clock = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(text);
   if (clock) {
     const [, a, b, c] = clock;
-    return c != null ? Number(a) * 3600 + Number(b) * 60 + Number(c) : Number(a) * 3600 + Number(b) * 60;
+    // Shortcuts пише тривалість як «хв:сс» до години й «год:хв:сс» від години.
+    return c != null ? Number(a) * 3600 + Number(b) * 60 + Number(c) : Number(a) * 60 + Number(b);
   }
 
   let seconds = 0;
