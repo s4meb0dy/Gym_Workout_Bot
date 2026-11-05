@@ -67,6 +67,18 @@ export function normalizeSleepMinutes(value: number | undefined): number | undef
 /** «У ліжку» і неспання — не сон (назви залежать від мови iPhone). */
 const NOT_SLEEP = /ліжк|bed|без сну|неспан|не сплю|прокин|пробудж|awake/i;
 
+/**
+ * Shortcuts кладе змінну-список у поле «Список» або окремими елементами, або одним
+ * текстом через перенесення рядка — розгортаємо обидва варіанти в плаский масив.
+ */
+function flattenLines(value: unknown): unknown[] | undefined {
+  const items = Array.isArray(value) ? value : typeof value === "string" ? [value] : undefined;
+  if (!items) return undefined;
+  return items.flatMap((item) =>
+    typeof item === "string" ? item.split(/\r?\n/).map((s) => s.trim()).filter(Boolean) : [item],
+  );
+}
+
 /** Тривалість одного запису з Shortcuts: секунди числом, «1:11:00», «1 год 11 хв» або «71 min». */
 export function parseDurationSeconds(value: unknown): number | undefined {
   if (typeof value === "number" && Number.isFinite(value)) return value;
@@ -100,8 +112,10 @@ export function parseDurationSeconds(value: unknown): number | undefined {
  * сумуємо фази, відкидаючи «У ліжку» і неспання. Тоді не треба вгадувати, як
  * неспання називається у фільтрах Shortcuts на конкретній мові.
  */
-export function sleepFromStages(stages: unknown, durations: unknown): number | undefined {
-  if (!Array.isArray(stages) || !Array.isArray(durations) || stages.length === 0) return undefined;
+export function sleepFromStages(rawStages: unknown, rawDurations: unknown): number | undefined {
+  const stages = flattenLines(rawStages);
+  const durations = flattenLines(rawDurations);
+  if (!stages || !durations || stages.length === 0) return undefined;
   if (stages.length !== durations.length) return undefined;
 
   let seconds = 0;
