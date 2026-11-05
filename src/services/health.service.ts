@@ -56,7 +56,7 @@ function sanitizeActiveCalories(value: number | undefined): number | undefined {
 export function sanitizeHealthMetrics(metrics: HealthMetrics): HealthMetrics {
   const hrvRaw = metrics.hrv != null ? fixMangledDecimal(metrics.hrv, 15, 120) : undefined;
   return {
-    sleepMinutes: sanitizeMetric(metrics.sleepMinutes, 1, 1200),
+    sleepMinutes: sanitizeMetric(metrics.sleepMinutes, 1, 960), // понад 16 год — це сума «У ліжку» з фазами, а не сон
     restingHr: sanitizeMetric(metrics.restingHr, 30, 220),
     hrv: sanitizeFloat(hrvRaw, 15, 120),
     steps: sanitizeMetric(metrics.steps, 1, 150_000),
