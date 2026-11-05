@@ -64,6 +64,54 @@ export function normalizeSleepMinutes(value: number | undefined): number | undef
   return value;
 }
 
+/** «У ліжку» і неспання — не сон (назви залежать від мови iPhone). */
+const NOT_SLEEP = /ліжк|bed|без сну|неспан|не сплю|прокин|пробудж|awake/i;
+
+/** Тривалість одного запису з Shortcuts: секунди числом, «1:11:00», «1 год 11 хв» або «71 min». */
+export function parseDurationSeconds(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "object" && value !== null && "value" in value) {
+    return parseDurationSeconds((value as { value: unknown }).value);
+  }
+  const text = String(value ?? "").trim().toLowerCase().replace(",", ".");
+  if (!text) return undefined;
+
+  const clock = /^(\d+):(\d{1,2})(?::(\d{1,2}))?$/.exec(text);
+  if (clock) {
+    const [, a, b, c] = clock;
+    return c != null ? Number(a) * 3600 + Number(b) * 60 + Number(c) : Number(a) * 3600 + Number(b) * 60;
+  }
+
+  let seconds = 0;
+  let matched = false;
+  for (const [, n, unit] of text.matchAll(/(\d+(?:\.\d+)?)\s*(год|г|h|хв|m|сек|с|s)/g)) {
+    matched = true;
+    const amount = Number(n);
+    seconds += /^(год|г|h)$/.test(unit) ? amount * 3600 : /^(хв|m)$/.test(unit) ? amount * 60 : amount;
+  }
+  if (matched) return seconds;
+
+  const plain = Number(text);
+  return Number.isFinite(plain) ? plain : undefined;
+}
+
+/**
+ * Сон за списком записів з шорткату (назва фази + тривалість, у тому самому порядку):
+ * сумуємо фази, відкидаючи «У ліжку» і неспання. Тоді не треба вгадувати, як
+ * неспання називається у фільтрах Shortcuts на конкретній мові.
+ */
+export function sleepFromStages(stages: unknown, durations: unknown): number | undefined {
+  if (!Array.isArray(stages) || !Array.isArray(durations) || stages.length === 0) return undefined;
+  if (stages.length !== durations.length) return undefined;
+
+  let seconds = 0;
+  for (let i = 0; i < stages.length; i++) {
+    if (NOT_SLEEP.test(String(stages[i]))) continue;
+    seconds += parseDurationSeconds(durations[i]) ?? 0;
+  }
+  return seconds > 0 ? normalizeSleepMinutes(seconds) : undefined;
+}
+
 /** Сон, що збігається з попередньою ніччю до хвилини, — майже напевно повтор старого запису. */
 export function isStaleSleep(sleepMinutes: number | undefined, previousSleepMinutes: number | null | undefined): boolean {
   return sleepMinutes != null && previousSleepMinutes != null && Math.round(sleepMinutes) === previousSleepMinutes;
@@ -89,7 +137,9 @@ export function parseSyncBody(body: Record<string, unknown>): {
       : localDateString();
 
   const metrics = sanitizeHealthMetrics({
-    sleepMinutes: normalizeSleepMinutes(numFromBody(body, ["sleepMinutes", "sleepMin", "sleep"], "sum")),
+    sleepMinutes:
+      sleepFromStages(body.sleepStages, body.sleepDurations) ??
+      normalizeSleepMinutes(numFromBody(body, ["sleepMinutes", "sleepMin", "sleep"], "sum")),
     restingHr: numFromBody(body, ["restingHr", "restingHR", "RestingHR", "resting_hr"]),
     hrv: numFromBody(body, ["hrv", "HRV"]),
     steps: numFromBody(body, ["steps", "Steps"], "sum"),

@@ -1,5 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { isStaleSleep, normalizeSleepMinutes, parseSyncBody } from "../src/server/health-sync";
+import { isStaleSleep, normalizeSleepMinutes, parseSyncBody, sleepFromStages } from "../src/server/health-sync";
+
+describe("sleepFromStages", () => {
+  it("sums sleep stages and drops in-bed and awake, in any language", () => {
+    const stages = ["У ліжку", "Без сну", "Швидкий", "Повільний", "Глибокий", "Awake"];
+    const durations = [32400, 1800, 4380, 21600, 4200, 420];
+    expect(sleepFromStages(stages, durations)).toBe(503);
+  });
+
+  it("understands formatted durations", () => {
+    expect(sleepFromStages(["Core", "REM"], ["1:11:00", "1 год 12 хв"])).toBe(143);
+  });
+
+  it("falls back when lists are missing or mismatched", () => {
+    expect(sleepFromStages(undefined, [100])).toBeUndefined();
+    expect(sleepFromStages(["Core"], [100, 200])).toBeUndefined();
+  });
+});
 
 describe("isStaleSleep", () => {
   it("flags the exact same sleep as the previous night", () => {
