@@ -31,7 +31,7 @@ export const REST_MACHINE = 90;
 /** Мала ізоляція, плечі та руки */
 export const REST_ISOLATION = 60;
 
-export const PROGRAM_VERSION = 15;
+export const PROGRAM_VERSION = 16;
 
 /**
  * Блок без ваги: один "підхід"-чекліст. Ваги немає, таймера відпочинку немає,
@@ -328,6 +328,24 @@ export const workoutProgram: WorkoutDaySeed[] = [
           "ПЕРШИЙ рух дня — спина свіжа. Долонями від себе, акцент на зведенні лопаток. Коли зробиш 4×10 — мінус 2 кг противаги.",
       },
       {
+        name: "Жим гантелей на похилій лаві (30°)",
+        block: "Гантелі",
+        targetSets: 3,
+        targetRepsMin: 8,
+        targetRepsMax: 12,
+        bodyPart: "upper",
+        progressionStep: 2,
+        restTimeInSeconds: REST_HEAVY,
+        baselineWeightMin: 18,
+        baselineWeightMax: 18,
+        baselineNote: "2×18 кг (≈80% від жиму лежачи)",
+        technique:
+          "Друга сесія верху грудей на тиждень: важкий сміт у понеділок, тут — об'єм і глибше розтягнення. " +
+          "Закидання: сядь, постав гантелі торцем на стегна біля колін, лягай і по черзі підштовхни їх коліньми вгору. " +
+          "Опускай до розтягу на рівні грудей, лікті під 45°. Якщо закидати важко — бери на 2 кг менше: " +
+          "для 8–12 повторень вага не головне. Перший тиждень після хвороби — запас 2–3 повтори.",
+      },
+      {
         name: "Віджимання на брусях у Гравітоні",
         block: "Гравітрон (Бруси)",
         targetSets: 3,
@@ -357,7 +375,7 @@ export const workoutProgram: WorkoutDaySeed[] = [
         technique: "Спина пряма, тягни лопатками, не корпусом. Пауза 1 сек біля корпусу — товщина спини.",
       },
       {
-        name: "Зведення рук у кросовері (Cable Fly)",
+        name: "Зведення в кросовері знизу вгору (верх грудей)",
         block: "Тренажери",
         targetSets: 3,
         targetRepsMin: 12,
@@ -365,11 +383,12 @@ export const workoutProgram: WorkoutDaySeed[] = [
         bodyPart: "upper",
         progressionStep: 2,
         restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 10,
-        baselineWeightMax: 10,
-        baselineNote: "10 кг на сторону",
+        baselineWeightMin: 7,
+        baselineWeightMax: 7,
+        baselineNote: "~7 кг на сторону (легше за звичайне зведення)",
         technique:
-          "Чиста ізоляція грудей без трицепса — дешева по відновленню, тому працює навіть у дефіциті.",
+          "Блоки в найнижчій точці, крок уперед, руки трохи зігнуті. Зводь знизу вгору до рівня підборіддя — " +
+          "це верх грудей. Пауза 1 сек, долоні майже торкаються. Ізоляція без трицепса, дешева по відновленню.",
       },
       {
         name: "Махи гантелей у нахилі (задня дельта)",
@@ -414,23 +433,8 @@ export const workoutProgram: WorkoutDaySeed[] = [
         baselineWeightMin: 14,
         baselineWeightMax: 14,
         baselineNote: "2×14 кг",
-        technique: "3 підходи — біцепс і брахіораліс для товщини руки. Суперсет із розгинаннями з-за голови.",
-      },
-      {
-        name: "Розгинання з-за голови на блоці (трицепс)",
-        block: "Тренажери",
-        targetSets: 2,
-        targetRepsMin: 12,
-        targetRepsMax: 15,
-        bodyPart: "upper",
-        progressionStep: 2,
-        restTimeInSeconds: REST_ISOLATION,
-        baselineWeightMin: 15,
-        baselineWeightMax: 15,
-        baselineNote: "15 кг",
         technique:
-          "Довга голівка трицепса росте найкраще в розтягнутому положенні — над головою, лікті вперед. " +
-          "Суперсет із молотками: біцепс і трицепс не заважають одне одному.",
+          "3 підходи — біцепс і брахіораліс для товщини руки. Трицепс сьогодні вже отримав роботу в жимі й брусах.",
       },
       POSTURE_BLOCK,
     ],
