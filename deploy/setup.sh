@@ -131,7 +131,7 @@ pm2 start dist/index.js --name "${APP_NAME}" --time
 pm2 save
 
 echo "==> Enabling pm2 startup on reboot"
-startup_cmd="$(pm2 startup systemd -u "$USER" --hp "$HOME" | grep -E '^sudo ' || true)"
+startup_cmd="$(pm2 startup systemd -u "${USER:-$(id -un)}" --hp "$HOME" | grep -E '^sudo ' || true)"
 if [ -n "${startup_cmd}" ]; then
   eval "${startup_cmd}"
   pm2 save
