@@ -9,6 +9,35 @@ export interface MuscleVolume {
   tonnage: number;
 }
 
+/** Чек-лісти, а не робочі підходи — у підрахунок об'єму не входять. */
+const NON_WORKING_GROUPS = new Set(["Розминка", "Постава"]);
+
+export interface VolumeSetInput {
+  weight: number;
+  reps: number;
+  exercise: { muscleGroup: string | null; progressionMode: string };
+}
+
+/**
+ * Підходи й тоннаж по м'язах. Вправи з власною вагою (прес на брусях записується
+ * з вагою 0) теж рахуються як підходи; для Гравітона тоннаж — від ефективного
+ * навантаження (вага тіла − противага), а не від 1 кг «власної ваги».
+ */
+export function summarizeVolume(sets: VolumeSetInput[], bodyWeightKg: number): MuscleVolume[] {
+  const byGroup = new Map<string, MuscleVolume>();
+  for (const set of sets) {
+    const group = set.exercise.muscleGroup || "Інше";
+    if (set.reps <= 0 || NON_WORKING_GROUPS.has(group)) continue;
+    const entry = byGroup.get(group) ?? { muscleGroup: group, sets: 0, tonnage: 0 };
+    entry.sets += 1;
+    entry.tonnage += effectiveLoad(set.weight, set.exercise.progressionMode, bodyWeightKg) * set.reps;
+    byGroup.set(group, entry);
+  }
+  return Array.from(byGroup.values())
+    .map((v) => ({ ...v, tonnage: Math.round(v.tonnage) }))
+    .sort((a, b) => b.sets - a.sets);
+}
+
 /** Робочі підходи по м'язових групах за останні N днів. */
 export async function getWeeklyVolume(userId: string, days = 7): Promise<MuscleVolume[]> {
   const since = new Date();
@@ -16,23 +45,13 @@ export async function getWeeklyVolume(userId: string, days = 7): Promise<MuscleV
 
   const sets = await prisma.set.findMany({
     where: {
-      weight: { gt: 0 },
       reps: { gt: 0 },
       workoutSession: { userId, completedAt: { not: null, gte: since } },
     },
     include: { exercise: true },
   });
 
-  const byGroup = new Map<string, MuscleVolume>();
-  for (const set of sets) {
-    const group = set.exercise.muscleGroup || "Інше";
-    const entry = byGroup.get(group) ?? { muscleGroup: group, sets: 0, tonnage: 0 };
-    entry.sets += 1;
-    entry.tonnage += set.weight * set.reps;
-    byGroup.set(group, entry);
-  }
-
-  return Array.from(byGroup.values()).sort((a, b) => b.sets - a.sets);
+  return summarizeVolume(sets, (await latestBodyWeight(userId)) ?? 70);
 }
 
 export interface ExerciseOption {
