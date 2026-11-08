@@ -37,4 +37,9 @@ describe("summarizeVolume", () => {
     );
     expect(volume).toEqual([{ muscleGroup: "Спина", sets: 2, tonnage: 70 * 7 + 61 * 10 }]);
   });
+
+  it("adds rest-pause reps to tonnage but keeps it one set", () => {
+    const volume = summarizeVolume([{ weight: 20, reps: 5, extraReps: 2, exercise: ex("Груди") }], 70);
+    expect(volume).toEqual([{ muscleGroup: "Груди", sets: 1, tonnage: 140 }]);
+  });
 });

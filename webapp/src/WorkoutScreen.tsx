@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { api, ExerciseView, SetView, Summary, WorkoutView } from "./api";
 import { Stepper } from "./components";
-import { fmtClock, fmtSets, fmtSetWeight, fmtTarget, fmtWeight, isBodyweight, isDone, unitLabel } from "./format";
+import { fmtClock, fmtReps, fmtSets, fmtSetWeight, fmtTarget, fmtWeight, isBodyweight, isDone, unitLabel } from "./format";
 import { confirmAction, haptic } from "./telegram";
 
 interface Props {
@@ -43,6 +43,8 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
   const [weight, setWeight] = useState(0);
   const [reps, setReps] = useState(0);
   const [edit, setEdit] = useState<{ set: SetView; weight: number; reps: number } | null>(null);
+  // Rest-pause: скільки повторень дотиснуто після паузи до останнього підходу.
+  const [extra, setExtra] = useState<{ setId: string; reps: number } | null>(null);
   const restKey = `rest:${initial.sessionId}`;
   // Таймер відпочинку переживає перезавантаження застосунку (localStorage може бути недоступний).
   const [rest, setRestState] = useState<{ endsAt: number; total: number } | null>(() => {
@@ -78,6 +80,7 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
 
   useEffect(() => {
     setEdit(null);
+    setExtra(null);
     setShowTechnique(false);
     if (current) {
       const d = defaultInputs(current);
@@ -155,6 +158,18 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
       const res = await api.deleteSet(edit.set.id);
       setWorkout(res.workout);
       setEdit(null);
+    });
+
+  const saveExtra = () =>
+    act(async () => {
+      if (!extra) return;
+      const res = await api.setExtraReps(extra.setId, Math.max(0, Math.round(extra.reps)));
+      haptic.success();
+      setWorkout(res.workout);
+      setExtra(null);
+      if (res.restSeconds > 0) {
+        setRest({ endsAt: Date.now() + res.restSeconds * 1000, total: res.restSeconds });
+      }
     });
 
   const skipRest = () => {
@@ -243,9 +258,18 @@ export function WorkoutScreen({ initial, onFinished, onCancelled }: Props) {
                   onWeight={(v) => (edit ? setEdit({ ...edit, weight: v }) : setWeight(v))}
                   onReps={(v) => (edit ? setEdit({ ...edit, reps: v }) : setReps(v))}
                   editingId={edit?.set.id ?? null}
-                  onEditSet={(set) =>
-                    setEdit(edit?.set.id === set.id ? null : { set, weight: set.weight, reps: set.reps })
-                  }
+                  onEditSet={(set) => {
+                    setExtra(null);
+                    setEdit(edit?.set.id === set.id ? null : { set, weight: set.weight, reps: set.reps });
+                  }}
+                  extra={extra}
+                  onExtraOpen={(set) => {
+                    setEdit(null);
+                    setExtra({ setId: set.id, reps: set.extraReps || 2 });
+                  }}
+                  onExtraReps={(v) => extra && setExtra({ ...extra, reps: v })}
+                  onExtraSave={() => void saveExtra()}
+                  onExtraCancel={() => setExtra(null)}
                   showTechnique={showTechnique}
                   onToggleTechnique={() => setShowTechnique((v) => !v)}
                   busy={busy}
@@ -299,6 +323,11 @@ interface CurrentProps {
   onReps: (v: number) => void;
   editingId: string | null;
   onEditSet: (set: SetView) => void;
+  extra: { setId: string; reps: number } | null;
+  onExtraOpen: (set: SetView) => void;
+  onExtraReps: (v: number) => void;
+  onExtraSave: () => void;
+  onExtraCancel: () => void;
   showTechnique: boolean;
   onToggleTechnique: () => void;
   busy: boolean;
@@ -314,6 +343,7 @@ function CurrentExercise(props: CurrentProps) {
   const isWarmup = ex.type === "warmup";
   const nextSet = Math.min(ex.sets.length + 1, ex.targetSets);
   const isAssist = ex.progressionMode === "assist";
+  const lastSet = ex.sets[ex.sets.length - 1];
 
   return (
     <div style={{ paddingLeft: 38, marginTop: 6 }}>
@@ -343,10 +373,34 @@ function CurrentExercise(props: CurrentProps) {
               className={`chip today${editingId === s.id ? " editing" : ""}`}
               onClick={() => props.onEditSet(s)}
             >
-              {fmtSetWeight(s.weight, ex.progressionMode)}×{s.reps}
+              {fmtSetWeight(s.weight, ex.progressionMode)}×{fmtReps(s)}
             </button>
           ))}
         </div>
+      ) : null}
+
+      {lastSet && ex.type === "reps" && !editingId ? (
+        props.extra ? (
+          <div className="note">
+            <div className="small" style={{ marginBottom: 8 }}>
+              Дотиснув після паузи до підходу {lastSet.setNumber} ({fmtSetWeight(lastSet.weight, ex.progressionMode)}×{lastSet.reps}).
+              У прогресію не йде — рахується лише основна частина.
+            </div>
+            <Stepper value={props.extra.reps} step={1} min={0} unit="повт. після паузи" onChange={props.onExtraReps} />
+            <div className="btn-row">
+              <button className="btn primary" disabled={props.busy} onClick={props.onExtraSave}>
+                {props.extra.reps > 0 ? `Додати +${props.extra.reps}` : "Прибрати дотиск"}
+              </button>
+              <button className="btn secondary" disabled={props.busy} onClick={props.onExtraCancel}>
+                Скасувати
+              </button>
+            </div>
+          </div>
+        ) : (
+          <button className="link" onClick={() => props.onExtraOpen(lastSet)}>
+            {lastSet.extraReps ? `Змінити дотиск (+${lastSet.extraReps})` : "+ Дотиснув після паузи"}
+          </button>
+        )
       ) : null}
 
       {ex.stalledWeight != null ? (

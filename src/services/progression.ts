@@ -5,6 +5,8 @@ export type ExerciseType = "reps" | "time" | "warmup";
 export interface SetResult {
   weight: number;
   reps: number;
+  /** Дотиснуті після паузи — лише для показу, прогресія рахує тільки `reps`. */
+  extraReps?: number;
 }
 
 export interface ExerciseBaseline {

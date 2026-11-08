@@ -15,6 +15,7 @@ const NON_WORKING_GROUPS = new Set(["Розминка", "Постава"]);
 export interface VolumeSetInput {
   weight: number;
   reps: number;
+  extraReps?: number;
   exercise: { muscleGroup: string | null; progressionMode: string };
 }
 
@@ -30,7 +31,8 @@ export function summarizeVolume(sets: VolumeSetInput[], bodyWeightKg: number): M
     if (set.reps <= 0 || NON_WORKING_GROUPS.has(group)) continue;
     const entry = byGroup.get(group) ?? { muscleGroup: group, sets: 0, tonnage: 0 };
     entry.sets += 1;
-    entry.tonnage += effectiveLoad(set.weight, set.exercise.progressionMode, bodyWeightKg) * set.reps;
+    entry.tonnage +=
+      effectiveLoad(set.weight, set.exercise.progressionMode, bodyWeightKg) * (set.reps + (set.extraReps ?? 0));
     byGroup.set(group, entry);
   }
   return Array.from(byGroup.values())

@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE "Set" ADD COLUMN "extraReps" INTEGER NOT NULL DEFAULT 0;

@@ -220,6 +220,24 @@ export function registerWebAppRoutes(app: express.Application): void {
     }),
   );
 
+  // Rest-pause: дотиснуті після паузи в кілька секунд повторення додаються до підходу.
+  api.post(
+    "/workout/sets/:id/extra",
+    route(async (req, res, user) => {
+      const set = await findOwnActiveSet(user.id, String(req.params.id));
+      const extraReps = Number(req.body?.extraReps);
+      if (!set || !Number.isInteger(extraReps) || extraReps < 0 || extraReps > 50) {
+        res.status(400).json({ error: "invalid_set" });
+        return;
+      }
+      await prisma.set.update({ where: { id: set.id }, data: { extraReps } });
+      // Після дотиску — повний відпочинок заново.
+      const restSeconds = extraReps > 0 ? set.exercise.restTimeInSeconds : 0;
+      if (restSeconds > 0) notifyRest(user, restSeconds);
+      res.json({ workout: await buildWorkoutView(user.id), restSeconds });
+    }),
+  );
+
   api.delete(
     "/workout/sets/:id",
     route(async (req, res, user) => {

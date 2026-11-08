@@ -226,7 +226,7 @@ export async function getExerciseHistorySets(
   return lastSession.sets
     .filter((set) => set.exerciseId === exerciseId && set.weight > 0 && set.reps > 0)
     .sort((a, b) => a.setNumber - b.setNumber || a.createdAt.getTime() - b.createdAt.getTime())
-    .map((set) => ({ weight: set.weight, reps: set.reps }));
+    .map((set) => ({ weight: set.weight, reps: set.reps, extraReps: set.extraReps }));
 }
 
 export async function getProgressionForExercise(

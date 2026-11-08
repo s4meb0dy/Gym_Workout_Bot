@@ -45,12 +45,12 @@ async function buildExerciseView(
   userId: string,
   workoutDayId: number,
   exercise: Exercise,
-  sets: Array<{ id: string; exerciseId: number; setNumber: number; weight: number; reps: number }>,
+  sets: Array<{ id: string; exerciseId: number; setNumber: number; weight: number; reps: number; extraReps: number }>,
 ) {
   const todaySets = sets
     .filter((s) => s.exerciseId === exercise.id)
     .sort((a, b) => a.setNumber - b.setNumber)
-    .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: s.weight, reps: s.reps }));
+    .map((s) => ({ id: s.id, setNumber: s.setNumber, weight: s.weight, reps: s.reps, extraReps: s.extraReps }));
 
   const warmup = isWarmupExercise(exercise);
   const progression = warmup
@@ -180,7 +180,7 @@ export async function buildHistoryDetail(userId: string, sessionId: string) {
 
   const groups = new Map<
     number,
-    { name: string; order: number; mode: string; sets: Array<{ weight: number; reps: number }> }
+    { name: string; order: number; mode: string; sets: Array<{ weight: number; reps: number; extraReps: number }> }
   >();
   for (const set of session.sets) {
     if (set.weight <= 0 || set.reps <= 0) continue;
@@ -190,7 +190,7 @@ export async function buildHistoryDetail(userId: string, sessionId: string) {
       mode: set.exercise.progressionMode,
       sets: [],
     };
-    group.sets.push({ weight: set.weight, reps: set.reps });
+    group.sets.push({ weight: set.weight, reps: set.reps, extraReps: set.extraReps });
     groups.set(set.exerciseId, group);
   }
 

@@ -5,6 +5,7 @@ export interface SetView {
   setNumber: number;
   weight: number;
   reps: number;
+  extraReps: number;
 }
 
 export interface ExerciseView {
@@ -20,7 +21,7 @@ export interface ExerciseView {
   restSeconds: number;
   technique: string | null;
   sets: SetView[];
-  lastSets: Array<{ weight: number; reps: number }>;
+  lastSets: Array<{ weight: number; reps: number; extraReps?: number }>;
   suggestedWeight: number;
   shouldIncrease: boolean;
   stalledWeight: number | null;
@@ -105,7 +106,7 @@ export interface HistoryDetail {
     exerciseId: number;
     name: string;
     progressionMode: string;
-    sets: Array<{ weight: number; reps: number }>;
+    sets: Array<{ weight: number; reps: number; extraReps?: number }>;
   }>;
 }
 
@@ -228,6 +229,8 @@ export const api = {
     }),
   updateSet: (id: string, weight: number, reps: number) =>
     request<{ workout: WorkoutView }>("PATCH", `/workout/sets/${id}`, { weight, reps }),
+  setExtraReps: (id: string, extraReps: number) =>
+    request<{ workout: WorkoutView; restSeconds: number }>("POST", `/workout/sets/${id}/extra`, { extraReps }),
   deleteSet: (id: string) => request<{ workout: WorkoutView }>("DELETE", `/workout/sets/${id}`),
   cancelRest: () => request<{ ok: true }>("POST", "/workout/rest/cancel"),
   finish: () => request<{ summary: Summary }>("POST", "/workout/finish"),

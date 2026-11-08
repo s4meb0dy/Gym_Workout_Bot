@@ -29,8 +29,13 @@ export function fmtSetWeight(weight: number, mode?: string): string {
   return isBodyweight(weight, mode) ? "ВВ" : fmtWeight(weight);
 }
 
-export function fmtSets(sets: Array<{ weight: number; reps: number }>, mode?: string): string {
-  return sets.map((s) => (s.weight > 0 ? `${fmtSetWeight(s.weight, mode)}×${s.reps}` : `${s.reps}`)).join("  ");
+/** Повторення підходу; дотиснуті після паузи — через «+»: 5+2. */
+export function fmtReps(s: { reps: number; extraReps?: number }): string {
+  return s.extraReps ? `${s.reps}+${s.extraReps}` : `${s.reps}`;
+}
+
+export function fmtSets(sets: Array<{ weight: number; reps: number; extraReps?: number }>, mode?: string): string {
+  return sets.map((s) => (s.weight > 0 ? `${fmtSetWeight(s.weight, mode)}×${fmtReps(s)}` : fmtReps(s))).join("  ");
 }
 
 export function daysAgo(iso: string | null): string {

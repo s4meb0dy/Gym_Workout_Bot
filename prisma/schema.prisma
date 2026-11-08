@@ -175,6 +175,8 @@ model Set {
   setNumber        Int
   weight           Float
   reps             Int
+  /// Повторення, дотиснуті після паузи в кілька секунд (rest-pause); у прогресію не входять.
+  extraReps        Int            @default(0)
   rpe              Float?
   note             String?
   createdAt        DateTime       @default(now())
