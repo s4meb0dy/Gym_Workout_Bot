@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { measurementInsight, parseMeasurement } from "../src/services/measurements.service";
+import { isMeasurementDue, measurementInsight, parseMeasurement } from "../src/services/measurements.service";
 
 const day = (n: number) => new Date(Date.UTC(2026, 10, 1) + n * 86400000);
 
@@ -45,5 +45,18 @@ describe("parseMeasurement", () => {
   it("rejects impossible values and empty input", () => {
     expect(parseMeasurement({ waistCm: 7 })).toBeNull();
     expect(parseMeasurement({})).toBeNull();
+  });
+});
+
+describe("isMeasurementDue", () => {
+  it("is due on Sunday unless measured in the last few days", () => {
+    expect(isMeasurementDue(7, "Sun")).toBe(true);
+    expect(isMeasurementDue(1, "Sun")).toBe(false);
+  });
+
+  it("waits for Sunday mid-week but catches a missed Sunday", () => {
+    expect(isMeasurementDue(5, "Wed")).toBe(false);
+    expect(isMeasurementDue(8, "Tue")).toBe(true);
+    expect(isMeasurementDue(null, "Tue")).toBe(true);
   });
 });

@@ -1,12 +1,26 @@
+import { config } from "../config/env";
 import { prisma } from "../db/client";
 
 export const MEASUREMENT_FIELDS = ["waistCm", "chestCm", "shouldersCm", "armCm", "thighCm"] as const;
 export type MeasurementField = (typeof MEASUREMENT_FIELDS)[number];
 export type MeasurementInput = Partial<Record<MeasurementField, number>>;
 
-/** Заміри раз на 2 тижні: частіше — шум, рідше — пізно помітимо, що росте талія. */
-export const MEASURE_EVERY_DAYS = 14;
+/** Заміри щонеділі зранку натще: тиждень — достатньо, щоб помітити, що росте талія. */
+export const MEASURE_WEEKDAY = "Sun";
 const DAY_MS = 86400000;
+
+/**
+ * Час замірів: у неділю, якщо останній замір був 4+ дні тому (не дублюємо суботній),
+ * або будь-коли, якщо неділю пропущено (тиждень і більше без замірів).
+ */
+export function isMeasurementDue(daysSinceLast: number | null, weekday: string): boolean {
+  if (daysSinceLast == null) return true;
+  return daysSinceLast >= 8 || (weekday === MEASURE_WEEKDAY && daysSinceLast >= 4);
+}
+
+export function localWeekday(date = new Date()): string {
+  return new Intl.DateTimeFormat("en-US", { timeZone: config.timezone, weekday: "short" }).format(date);
+}
 
 interface Point {
   date: Date;
@@ -28,7 +42,7 @@ function nearest(points: Point[], date: Date): Point | undefined {
  */
 export function measurementInsight(waist: Point[], weights: Point[]): string | null {
   if (waist.length === 0) return null;
-  if (waist.length === 1) return "Перший замір збережено — повтори через 2 тижні в тих самих умовах.";
+  if (waist.length === 1) return "Перший замір збережено — наступний у неділю зранку в тих самих умовах.";
 
   const latest = waist[waist.length - 1];
   const target = new Date(latest.date.getTime() - 28 * DAY_MS);
@@ -86,7 +100,7 @@ export async function buildMeasurementsView(userId: string) {
       waist,
       weights.map((w) => ({ date: w.recordedAt, value: w.weightKg })),
     ),
-    due: daysSinceLast == null || daysSinceLast >= MEASURE_EVERY_DAYS - 1,
+    due: isMeasurementDue(daysSinceLast, localWeekday()),
     daysSinceLast,
   };
 }

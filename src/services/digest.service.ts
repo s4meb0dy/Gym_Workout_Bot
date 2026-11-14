@@ -69,7 +69,7 @@ export async function buildWeeklyDigest(userId: string): Promise<string> {
     text += `📏 ${measurements.insight}\n`;
   }
   if (measurements.due) {
-    text += "📏 Час замірів: завтра зранку натще — талія, груди, плечі, рука, стегно (вкладка «День»).\n";
+    text += "📏 Цього тижня замірів ще не було — талія на рівні пупка натще (вкладка «День»).\n";
   }
 
   if (volume.length > 0) {

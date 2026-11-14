@@ -9,6 +9,7 @@ import {
 import { getWorkoutDayByNumber } from "../services/workout.service";
 import { createBackupFile, backupExists } from "../services/backup.service";
 import { buildWeeklyDigest } from "../services/digest.service";
+import { buildMeasurementsView, MEASURE_WEEKDAY } from "../services/measurements.service";
 import { checkStaleWorkouts } from "./stale-workouts";
 import { InlineKeyboard } from "grammy";
 import { getWebAppUrl } from "../bot/webapp-button";
@@ -89,6 +90,23 @@ async function runHourlyReminders(bot: Bot<BotContext>): Promise<void> {
             reply_markup: url ? new InlineKeyboard().webApp("📱 Записати в застосунку", url) : undefined,
           },
         );
+      }
+
+      if (setting.weightEnabled && hour === setting.weightHour && weekday === MEASURE_WEEKDAY) {
+        const measurements = await buildMeasurementsView(setting.userId);
+        if (measurements.due) {
+          const url = getWebAppUrl();
+          await bot.api.sendMessage(
+            chatId,
+            "📏 <b>Неділя — день замірів.</b> Натще, після туалету, стрічка горизонтально, живіт не втягувати:\n" +
+              "• талія на рівні пупка (головне)\n• за бажанням — груди, плечі, рука, стегно\n\n" +
+              "Записати — вкладка «День» → Заміри.",
+            {
+              parse_mode: "HTML",
+              reply_markup: url ? new InlineKeyboard().webApp("📱 Записати в застосунку", url) : undefined,
+            },
+          );
+        }
       }
 
       if (setting.supplementsEnabled && hour === setting.supplementsHour) {

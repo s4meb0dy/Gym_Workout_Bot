@@ -399,7 +399,7 @@ const MEASUREMENT_LABELS: Array<[MeasurementField, string, string]> = [
   ["thighCm", "Стегно", "найширше місце, нога розслаблена"],
 ];
 
-/** Заміри сантиметром раз на 2 тижні + висновок «талія проти ваги». */
+/** Заміри сантиметром щонеділі + висновок «талія проти ваги». */
 function MeasurementsCard({ day, busy, run }: CardProps) {
   const m = day.measurements;
   const last = m.entries[m.entries.length - 1];
@@ -463,7 +463,7 @@ function MeasurementsCard({ day, busy, run }: CardProps) {
           </>
         ) : (
           <div className="muted small">
-            Сантиметр раз на 2 тижні — найкращий спосіб перевірити, що набір іде без жиру: вага росте, а талія майже ні.
+            Сантиметр щонеділі зранку — найкращий спосіб перевірити, що набір іде без жиру: вага росте, а талія майже ні.
           </div>
         )}
 
