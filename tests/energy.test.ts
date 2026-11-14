@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { macroSplit, parseGoal, slopePerDay } from "../src/services/energy.service";
+import { isPlausibleTdee, macroSplit, parseGoal, slopePerDay } from "../src/services/energy.service";
 
 describe("macroSplit", () => {
   it("splits 2600 kcal for a 69.7 kg lean bulk", () => {
@@ -26,5 +26,20 @@ describe("parseGoal", () => {
   it("defaults to a lean bulk", () => {
     expect(parseGoal(undefined)).toBe("lean_bulk");
     expect(parseGoal("cut")).toBe("cut");
+  });
+});
+
+describe("isPlausibleTdee", () => {
+  it("rejects a water-driven 1800 kcal estimate for an active 70 kg, 182 cm lifter", () => {
+    expect(isPlausibleTdee(1810, 70.8, 182)).toBe(false);
+  });
+
+  it("accepts a normal maintenance range", () => {
+    expect(isPlausibleTdee(2500, 70.8, 182)).toBe(true);
+    expect(isPlausibleTdee(3000, 70.8, 182)).toBe(true);
+  });
+
+  it("rejects an absurdly high estimate", () => {
+    expect(isPlausibleTdee(4500, 70.8, 182)).toBe(false);
   });
 });

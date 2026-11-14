@@ -54,6 +54,18 @@ export interface EnergyMissing {
 }
 
 const DAY_MS = 86400000;
+/** Грубий режим дивиться не далі за ~2 місяці: старіші зважування (до хвороби, перерви) лише вводять в оману. */
+const ROUGH_LOOKBACK_DAYS = 56;
+
+/**
+ * Межі правдоподібної норми підтримки: BMR (Міффлін — Сан-Жеор, вік ~25) × 1.35…2.4.
+ * Перші тижні після креатину, хвороби чи зміни харчування вага стрибає через воду й
+ * глікоген, і регресія дає нереальні 1800 ккал для активного 70-кілограмового хлопця.
+ */
+export function isPlausibleTdee(tdee: number, weightKg: number, heightCm: number | null | undefined): boolean {
+  const bmr = 10 * weightKg + 6.25 * (heightCm ?? 178) - 5 * 25 + 5;
+  return tdee >= bmr * 1.35 && tdee <= bmr * 2.4;
+}
 
 export function slopePerDay(points: Array<{ t: number; w: number }>): number {
   const n = points.length;
@@ -92,7 +104,7 @@ export async function estimateEnergy(userId: string): Promise<EnergyEstimate | E
   const now = new Date();
 
   const weights = await prisma.bodyWeight.findMany({
-    where: { userId, recordedAt: { gte: new Date(now.getTime() - 200 * DAY_MS) } },
+    where: { userId, recordedAt: { gte: new Date(now.getTime() - ROUGH_LOOKBACK_DAYS * DAY_MS) } },
     orderBy: { recordedAt: "asc" },
   });
 
@@ -152,6 +164,18 @@ export async function estimateEnergy(userId: string): Promise<EnergyEstimate | E
   }
 
   const tdee = avg - slope * KCAL_PER_KG;
+  if (!isPlausibleTdee(tdee, latestWeightKg, user?.heightCm)) {
+    return {
+      missing: true,
+      goal,
+      weighIns,
+      loggedDays,
+      hint:
+        `Вага зараз змінюється ${slope > 0 ? "+" : ""}${Math.round(slope * 7 * 100) / 100} кг/тиждень — ` +
+        "це переважно вода й глікоген (креатин, відновлення після хвороби), а не жир чи м'язи. " +
+        "Норму порахую, коли тренд стабілізується — тримай поточну ціль.",
+    };
+  }
   const pace = GOAL_PACE[goal];
   const targetWeeklyChangeKg = (latestWeightKg * pace.target) / 100;
   const surplus = (targetWeeklyChangeKg / 7) * KCAL_PER_KG;

@@ -73,12 +73,12 @@ function ruleBasedAdvice(ctx: HealthContext): string {
 
   const energy = ctx.energy;
   if (!("missing" in energy) && ctx.goal === "lean_bulk") {
-    if (energy.pace === "below") {
+    if (energy.pace === "below" && energy.recommendedCalories > ctx.calorieTarget) {
       tips.push(
         `⚖️ Вага ${energy.weeklyChangeKg > 0 ? "+" : ""}${energy.weeklyChangeKg} кг/тиждень — для набору замало. ` +
           `Підніми калорії до ~${energy.recommendedCalories} ккал.`,
       );
-    } else if (energy.pace === "above") {
+    } else if (energy.pace === "above" && energy.recommendedCalories < ctx.calorieTarget) {
       tips.push(
         `⚖️ Вага +${energy.weeklyChangeKg} кг/тиждень — зашвидко, частина піде в жир. ` +
           `Зменш до ~${energy.recommendedCalories} ккал.`,
